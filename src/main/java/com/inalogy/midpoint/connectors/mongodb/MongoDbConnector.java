@@ -1,4 +1,6 @@
 package com.inalogy.midpoint.connectors.mongodb;
+import com.inalogy.midpoint.connectors.filter.MongoDbFilterTranslator;
+import com.inalogy.midpoint.connectors.utils.Constants;
 import com.mongodb.client.model.Filters;
 import org.bson.Document;
 import com.inalogy.midpoint.connectors.driver.Connection;
@@ -7,18 +9,23 @@ import com.inalogy.midpoint.connectors.filter.MongoDbFilter;
 import com.inalogy.midpoint.connectors.schema.SchemaHandler;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.FindIterable;
+import static com.mongodb.client.model.Filters.eq;
 
 import org.bson.conversions.Bson;
+import org.bson.types.ObjectId;
 import org.identityconnectors.common.logging.Log;
 import org.identityconnectors.framework.common.objects.Attribute;
 import org.identityconnectors.framework.common.objects.AttributeDelta;
+import org.identityconnectors.framework.common.objects.ConnectorObject;
 import org.identityconnectors.framework.common.objects.ObjectClass;
 import org.identityconnectors.framework.common.objects.OperationOptions;
 import org.identityconnectors.framework.common.objects.ResultsHandler;
 import org.identityconnectors.framework.common.objects.Schema;
+import org.identityconnectors.framework.common.objects.SchemaBuilder;
 import org.identityconnectors.framework.common.objects.Uid;
 import org.identityconnectors.framework.common.objects.filter.FilterTranslator;
 import org.identityconnectors.framework.spi.Configuration;
+import org.identityconnectors.framework.spi.ConnectorClass;
 import org.identityconnectors.framework.spi.PoolableConnector;
 import org.identityconnectors.framework.spi.operations.CreateOp;
 import org.identityconnectors.framework.spi.operations.DeleteOp;
@@ -27,7 +34,10 @@ import org.identityconnectors.framework.spi.operations.SearchOp;
 import org.identityconnectors.framework.spi.operations.TestOp;
 import org.identityconnectors.framework.spi.operations.UpdateDeltaOp;
 
+import java.util.List;
 import java.util.Set;
+
+@ConnectorClass(displayNameKey = "mongodb.connector.display", configurationClass = MongoDbConfiguration.class)
 
 public class MongoDbConnector implements
         PoolableConnector,
@@ -43,6 +53,7 @@ public class MongoDbConnector implements
     private MongoClientManager mongoClientManager;
     private Connection connection;
 
+    private static  Schema schema = null;
     private static final Log LOG = Log.getLog(MongoDbConnector.class);
     @Override
     public void checkAlive() {
@@ -59,20 +70,54 @@ public class MongoDbConnector implements
         this.configuration = (MongoDbConfiguration) configuration;
         this.configuration.validate();
         this.mongoClientManager = new MongoClientManager(this.configuration);
-        this.connection = new Connection(mongoClientManager.buildMongoClient());
+        this.connection = new Connection(mongoClientManager.buildMongoClient(), this.configuration);
 //        this.sessionManager = new SessionManager(mongoClient);
     }
 
     @Override
     public void dispose() {
+        LOG.info("Disposing MognoDb connector");
+        if (this.connection != null){
+            this.connection.close();
+        }
 
     }
 
     @Override
-    public Uid create(ObjectClass objectClass, Set<Attribute> set, OperationOptions operationOptions) {
-        return null;
-    }
+    public Uid create(ObjectClass objectClass, Set<Attribute> attributes, OperationOptions operationOptions) {
+        if (objectClass == null || !objectClass.getObjectClassValue().equals("__ACCOUNT__")) {
+            throw new IllegalArgumentException("Invalid object class");
+        }
 
+        Document docToInsert = new Document();
+        for (Attribute attr : attributes) {
+            String attrName = attr.getName();
+            List<Object> attrValues = attr.getValue();
+
+            // Check if it's a multi-valued attribute by its size or refer to the schema
+            if (attrValues != null && attrValues.size() > 1) {
+                // Multi-valued attribute, insert as an array
+                docToInsert.append(attrName, attrValues);
+            } else {
+                // Single-valued attribute
+                if (attrValues != null && !attrValues.isEmpty()) {
+                    Object attrValue = attrValues.get(0);
+                    docToInsert.append(attrName, attrValue);
+                }
+            }
+        }
+
+        // Insert the document into MongoDB
+        this.connection.insertOne(docToInsert);
+
+        // Get the generated _id field from MongoDB and return it as a Uid
+        Object id = docToInsert.get(Constants.MONGODB_UID);
+        if (id != null) {
+            return new Uid(id.toString());
+        } else {
+            throw new IllegalStateException("Document was not inserted correctly, _id field is null");
+        }
+    }
     @Override
     public void delete(ObjectClass objectClass, Uid uid, OperationOptions operationOptions) {
 
@@ -80,40 +125,66 @@ public class MongoDbConnector implements
 
     @Override
     public Schema schema() {
-        return null;
+        if (schema == null) {
+            LOG.info("Cache schema");
+            SchemaBuilder schemaBuilder = new SchemaBuilder(MongoDbConnector.class);
+            SchemaHandler.buildObjectClass(schemaBuilder, this.configuration.getKeyColumn(), this.configuration.getPasswordColumnName(), this.connection.getTemplateUser());
+
+            // Build the schema
+            MongoDbConnector.schema = schemaBuilder.build();
+        }
+        return schema;
     }
 
     @Override
     public FilterTranslator<MongoDbFilter> createFilterTranslator(ObjectClass objectClass, OperationOptions operationOptions) {
-        return null;
+        return new MongoDbFilterTranslator();
     }
 
     @Override
-    public void executeQuery(ObjectClass objectClass, MongoDbFilter mongoDbFilter, ResultsHandler resultsHandler, OperationOptions operationOptions) {
+    public void executeQuery(ObjectClass objectClass, MongoDbFilter query, ResultsHandler handler, OperationOptions options) {
+        LOG.info("executeQuery on {0}, query: {1}, options: {2}", objectClass, query, options);
+//        FIXME:PAGING!
+        if (schema == null){
+            LOG.info("refreshing schema in executeQuery");
+            schema();
+        }
 
+        if (query != null && query != null) {
+            // Query by specific UID
+            Document result = this.connection.getSingleUser(query);
+            if (result != null) {
+                ConnectorObject connectorObject = SchemaHandler.convertDocumentToConnectorObject(result, schema, objectClass, this.configuration.getKeyColumn());
+                handler.handle(connectorObject);
+            }
+        } else {
+            // Query all records
+            FindIterable<Document> allDocuments = this.connection.getAllUsers();
+            for (Document result : allDocuments) {
+                ConnectorObject connectorObject = SchemaHandler.convertDocumentToConnectorObject(result, schema, objectClass, this.configuration.getKeyColumn());
+                handler.handle(connectorObject);
+            }
+        }
     }
 
     @Override
     public void test() {
         try {
-            MongoDatabase database = connection.getDatabase(this.configuration.getDatabase());
+            Document templateUser = this.connection.getTemplateUser();
+            if (templateUser != null) {
+                System.out.println("Test successful. Found user: " + templateUser.toJson());
 
-            Bson filter = Filters.eq(this.configuration.getKeyColumn(), this.configuration.getTemplateUser());
-            FindIterable<Document> iterable = database.getCollection(this.configuration.getTable()).find(filter).limit(1);
-            Document first = iterable.first();
-            if (first != null) {
-                System.out.println("Test successful. Found user: " + first.toJson());
-
-                for (String key : first.keySet()) {
-                    Object value = first.get(key);
-                    System.out.println("Key: " + key + ", Value: " + value + ", Type: " + (value != null ? value.getClass().getSimpleName() : "null"));
+                for (String key : templateUser.keySet()) {
+                    Object value = templateUser.get(key);
+                    LOG.ok("Key: " + key + ", Value: " + value + ", Type: " + (value != null ? value.getClass().getSimpleName() : "null"));
+//                    FIXME: remove later
                 }
 
             } else {
-                System.out.println("Test successful, but no user found with the specified email.");
+                LOG.ok("Test successful, but no user found with the specified email.");
             }
         } catch (Exception e) {
-            System.out.println("Test failed: " + e.getMessage());
+            LOG.error("Test failed: " + e.getMessage());
         }
     }
 

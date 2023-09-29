@@ -38,7 +38,7 @@ public class TestProcessor {
         configuration.setPassword(new GuardedString(properties.getProperty("password").toCharArray()));
         configuration.setHost(properties.getProperty("host"));
         configuration.setPort(Integer.parseInt(properties.getProperty("port")));
-        configuration.setTable(properties.getProperty("table"));
+        configuration.setCollection(properties.getProperty("collection"));
         configuration.setKeyColumn(properties.getProperty("keyColumn"));
         configuration.setDatabase(properties.getProperty("database"));
         configuration.setTemplateUser(properties.getProperty("templateUser"));

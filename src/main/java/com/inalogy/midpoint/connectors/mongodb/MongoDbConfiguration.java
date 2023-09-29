@@ -24,7 +24,10 @@ public class MongoDbConfiguration extends AbstractConfiguration {
      */
     private String username;
 
-    private String table;
+    private String collection;
+
+
+    private String passwordColumnName;
 
     private String keyColumn;
     private String jdbcUrlTemplate;
@@ -66,6 +69,13 @@ public class MongoDbConfiguration extends AbstractConfiguration {
         this.username = username;
     }
 
+    public String getPasswordColumnName() {
+        return passwordColumnName;
+    }
+
+    public void setPasswordColumnName(String passwordColumnName) {
+        this.passwordColumnName = passwordColumnName;
+    }
     @ConfigurationProperty(order = 103)
     public GuardedString getPassword() {
         return password;
@@ -99,17 +109,17 @@ public class MongoDbConfiguration extends AbstractConfiguration {
     @ConfigurationProperty(order = 7,
             displayMessageKey = "TABLE_DISPLAY",
             helpMessageKey = "TABLE_HELP")
-    public String getTable() {
-        return this.table;
+    public String getCollection() {
+        return this.collection;
     }
 
     /**
      * Table setter
      *
-     * @param table name value
+     * @param collection name value
      */
-    public void setTable(String table) {
-        this.table = table;
+    public void setCollection(String collection) {
+        this.collection = collection;
     }
 
     /**

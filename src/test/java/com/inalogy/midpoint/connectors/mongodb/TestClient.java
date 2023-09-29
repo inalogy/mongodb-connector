@@ -14,6 +14,7 @@ public class TestClient {
     public void testExec1() {
         init();
         this.testProcessor.connector.test();
+        this.testProcessor.connector.schema();
     }
 
 
