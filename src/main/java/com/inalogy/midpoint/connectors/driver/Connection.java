@@ -15,8 +15,13 @@ import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
 import org.identityconnectors.framework.spi.Configuration;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
-
+import java.util.Map;
+import java.util.Base64;
 
 
 public class Connection {
@@ -25,12 +30,14 @@ public class Connection {
     private final MongoDatabase database;
     private final MongoCollection<Document> collection;
     private final MongoDbConfiguration configuration;
+    private final Document templateUser;
 
     public Connection(MongoClient mongoClient, MongoDbConfiguration configuration) {
         this.mongoClient = mongoClient;
         this.configuration = configuration;
         this.database = mongoClient.getDatabase(this.configuration.getDatabase());
         this.collection = database.getCollection(this.configuration.getCollection());
+        this.templateUser = this.getTemplateUser();
     }
 
 //    public MongoDatabase getDatabase(String dbName) {
@@ -64,6 +71,71 @@ public class Connection {
     public void insertOne(Document document) {
         this.collection.insertOne(document);
     }
+
+    public Document alignDataTypes(Document docToInsert) {
+        Document alignedDocument = new Document();
+
+        for (Map.Entry<String, Object> entry : docToInsert.entrySet()) {
+            String key = entry.getKey();
+            Object value = entry.getValue();
+            Object templateValue = templateUser.get(key);
+            if (templateValue != null) {
+                Class<?> templateType = templateValue.getClass();
+//              handle multivalue attribute assuming all attributes that should be inserted are strings
+                if (templateValue instanceof List) {
+                    List<?> templateList = (List<?>) templateValue;
+                    if (!templateList.isEmpty()) {
+                        templateType = templateList.get(0).getClass();
+                    }
+                    List<Object> newValueList = new ArrayList<>();
+
+                    if (value instanceof List) {
+                        for (Object item : (List<?>) value) {
+                            newValueList.add(convertValue(item, templateType));
+                        }
+                    } else {
+                        newValueList.add(convertValue(value, templateType));
+                    }
+
+                    alignedDocument.append(key, newValueList);
+                } else {
+                    //handle any other data type
+                    alignedDocument.append(key, convertValue(value, templateType));
+                }
+            } else {
+                alignedDocument.append(key, value);
+            }
+        }
+
+        return alignedDocument;
+    }
+
+    private static Object convertValue(Object value, Class<?> targetType) {
+        if (targetType.equals(String.class)) {
+            return value.toString();
+        } else if (targetType.equals(Integer.class)) {
+            return Integer.parseInt(value.toString());
+        } else if (targetType.equals(Long.class)) {
+            return Long.parseLong(value.toString());
+        } else if (targetType.equals(Double.class)) {
+            return Double.parseDouble(value.toString());
+        } else if (targetType.equals(Date.class)) {
+//            SimpleDateFormat sdf = new SimpleDateFormat(Constants.ISO_DATE_FORMAT);
+            try {
+                return new Date(Date.parse(value.toString()));
+            } catch (Exception e) { // Catching runtime exceptions
+                //FIXME: add logging for errors
+                return null;
+            }
+
+        } else if (targetType.equals(byte[].class)) {
+            // Assuming the photo is Base64 encoded
+            return Base64.getDecoder().decode(value.toString());
+        } else {
+            return value;
+        }
+    }
+
     public void close() {
         if (mongoClient != null) {
             mongoClient.close();

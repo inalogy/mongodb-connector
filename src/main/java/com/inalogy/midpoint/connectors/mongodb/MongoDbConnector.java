@@ -52,6 +52,7 @@ public class MongoDbConnector implements
     private static SchemaHandler schemaHandler = null;
     private MongoClientManager mongoClientManager;
     private Connection connection;
+//    private static SchemaCache schemaCache;
 
     private static  Schema schema = null;
     private static final Log LOG = Log.getLog(MongoDbConnector.class);
@@ -79,6 +80,8 @@ public class MongoDbConnector implements
         LOG.info("Disposing MognoDb connector");
         if (this.connection != null){
             this.connection.close();
+//            schemaCache = null;
+            schema = null;
         }
 
     }
@@ -106,12 +109,12 @@ public class MongoDbConnector implements
                 }
             }
         }
-
+        Document transformedDocument = this.connection.alignDataTypes(docToInsert);
         // Insert the document into MongoDB
-        this.connection.insertOne(docToInsert);
+        this.connection.insertOne(transformedDocument);
 
         // Get the generated _id field from MongoDB and return it as a Uid
-        Object id = docToInsert.get(Constants.MONGODB_UID);
+        Object id = transformedDocument.get(Constants.MONGODB_UID);
         if (id != null) {
             return new Uid(id.toString());
         } else {
@@ -127,11 +130,12 @@ public class MongoDbConnector implements
     public Schema schema() {
         if (schema == null) {
             LOG.info("Cache schema");
+//            SchemaCache schemaCache = new SchemaCache(this.connection.getTemplateUser(), configuration);
             SchemaBuilder schemaBuilder = new SchemaBuilder(MongoDbConnector.class);
             SchemaHandler.buildObjectClass(schemaBuilder, this.configuration.getKeyColumn(), this.configuration.getPasswordColumnName(), this.connection.getTemplateUser());
 
             // Build the schema
-            MongoDbConnector.schema = schemaBuilder.build();
+            schema = schemaBuilder.build();
         }
         return schema;
     }
