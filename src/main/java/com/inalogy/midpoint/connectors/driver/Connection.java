@@ -10,9 +10,13 @@ import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.Updates;
+import com.mongodb.client.result.DeleteResult;
+import com.mongodb.client.result.UpdateResult;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
+import org.identityconnectors.framework.common.objects.Uid;
 import org.identityconnectors.framework.spi.Configuration;
 
 import java.text.ParseException;
@@ -22,6 +26,10 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Base64;
+
+import static com.inalogy.midpoint.connectors.utils.Constants.ICFS_ACTIVATION;
+import static com.inalogy.midpoint.connectors.utils.Constants.ICFS_PASSWORD;
+import static com.inalogy.midpoint.connectors.utils.Constants.ICFS_UID;
 
 
 public class Connection {
@@ -79,9 +87,33 @@ public class Connection {
             String key = entry.getKey();
             Object value = entry.getValue();
             Object templateValue = templateUser.get(key);
+
+            // if attr not present in templateUser it must be __SPECIAL_ATTR
+            if (templateValue == null) {
+                templateValue = templateUser.get(key);
+
+                switch (key) {
+                    case Constants.ICFS_NAME:
+                        key = this.configuration.getKeyColumn();
+                        break;
+//                    case ICFS_UID:
+//                        key = Constants.MONGODB_UID;
+//                        break;
+                    case ICFS_PASSWORD:
+                        key = this.configuration.getPasswordColumnName();
+                        break;
+                    case ICFS_ACTIVATION:
+                        // TODO activation
+                        break;
+                    default:
+                    //    TODO err handling
+                        break;
+                }
+            }
+
             if (templateValue != null) {
                 Class<?> templateType = templateValue.getClass();
-//              handle multivalue attribute assuming all attributes that should be inserted are strings
+//              handle multivalue attribute (one-dimensional array) all attributes inside must be strings
                 if (templateValue instanceof List) {
                     List<?> templateList = (List<?>) templateValue;
                     if (!templateList.isEmpty()) {
@@ -131,15 +163,30 @@ public class Connection {
         } else if (targetType.equals(byte[].class)) {
             // Assuming the photo is Base64 encoded
             return Base64.getDecoder().decode(value.toString());
+        } else if (targetType.equals(Boolean.class)) {
+            return Boolean.parseBoolean(value.toString());
         } else {
             return value;
         }
     }
 
+    public DeleteResult deleteOne(Uid uid){
+        // Create a filter to match the document based on its _id
+        Bson filter = Filters.eq("_id", new ObjectId(uid.getUidValue()));
+        return this.collection.deleteOne(filter);
+    }
     public void close() {
         if (mongoClient != null) {
             mongoClient.close();
         }
+    }
+
+    public UpdateResult updateUser(Uid uid, List<Bson> updateOps){
+        // Create a filter to match the document based on its _id
+        Bson filter = Filters.eq(Constants.MONGODB_UID, new ObjectId(uid.getUidValue()));
+        return this.collection.updateOne(filter, Updates.combine(updateOps));
+
+
     }
 
 }
