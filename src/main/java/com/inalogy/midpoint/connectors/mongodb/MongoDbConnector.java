@@ -13,11 +13,15 @@ import com.inalogy.midpoint.connectors.filter.MongoDbFilter;
 import com.inalogy.midpoint.connectors.schema.SchemaHandler;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.FindIterable;
+import com.mongodb.MongoWriteException;
+
+import static com.inalogy.midpoint.connectors.utils.Constants.MONGODB_WRITE_EXCEPTION;
 import static com.mongodb.client.model.Filters.eq;
 
 import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
 import org.identityconnectors.common.logging.Log;
+import org.identityconnectors.framework.common.exceptions.AlreadyExistsException;
 import org.identityconnectors.framework.common.exceptions.UnknownUidException;
 import org.identityconnectors.framework.common.objects.Attribute;
 import org.identityconnectors.framework.common.objects.AttributeDelta;
@@ -56,16 +60,22 @@ public class MongoDbConnector implements
         DeleteOp {
 //    private SessionManager MongoClientManager;
     private MongoDbConfiguration configuration;
-    private static SchemaHandler schemaHandler = null;
+//    private static SchemaHandler schemaHandler = null;
     private MongoClientManager mongoClientManager;
     private Connection connection;
 //    private static SchemaCache schemaCache;
 
     private static  Schema schema = null;
     private static final Log LOG = Log.getLog(MongoDbConnector.class);
-    @Override
     public void checkAlive() {
-
+        try {
+            Document templateUser = this.connection.getTemplateUser();
+            if (templateUser != null) {
+            } else {
+                LOG.error("checkAlive successful, but no user found with the specified KeyColumnName Attribute. Please check connectorConfiguration and make sure that templateUser is present in database.");
+            }
+        } catch (Exception e) {
+        }
     }
 
     @Override
@@ -116,9 +126,19 @@ public class MongoDbConnector implements
                 }
             }
         }
-        Document transformedDocument = this.connection.alignDataTypes(docToInsert);
-        // Insert the document into MongoDB
-        this.connection.insertOne(transformedDocument);
+        Document transformedDocument = null;
+        try {
+            transformedDocument = SchemaHandler.alignDataTypes(docToInsert, this.connection.getTemplateUser(), this.configuration);
+            this.connection.insertOne(transformedDocument);
+        } catch (MongoWriteException e) {
+            if (e.getError().getCode() == MONGODB_WRITE_EXCEPTION) {
+                LOG.ok("alreadyExists " + e.getMessage());
+                // Handle the duplicate key error
+                throw new AlreadyExistsException();
+            } else {
+                LOG.error("FATAL_ERROR Occurred while creating account: " + e.getMessage());
+            }
+        }
 
         // Get the generated _id field from MongoDB and return it as a Uid
         Object id = transformedDocument.get(Constants.MONGODB_UID);
@@ -176,15 +196,18 @@ public class MongoDbConnector implements
         if (query != null && query != null) {
             // Query by specific UID
             Document result = this.connection.getSingleUser(query);
-            if (result != null) {
-                ConnectorObject connectorObject = SchemaHandler.convertDocumentToConnectorObject(result, schema, objectClass, this.configuration.getKeyColumn());
+            if (result == null) {
+                throw new UnknownUidException();
+
+            } else if (result != null) {
+                ConnectorObject connectorObject = SchemaHandler.convertDocumentToConnectorObject(result, schema, objectClass, this.connection.getTemplateUser(), this.configuration);
                 handler.handle(connectorObject);
             }
         } else {
             // Query all records
             FindIterable<Document> allDocuments = this.connection.getAllUsers();
             for (Document result : allDocuments) {
-                ConnectorObject connectorObject = SchemaHandler.convertDocumentToConnectorObject(result, schema, objectClass, this.configuration.getKeyColumn());
+                ConnectorObject connectorObject =  SchemaHandler.convertDocumentToConnectorObject(result, schema, objectClass, this.connection.getTemplateUser(), this.configuration);
                 handler.handle(connectorObject);
             }
         }
@@ -195,14 +218,7 @@ public class MongoDbConnector implements
         try {
             Document templateUser = this.connection.getTemplateUser();
             if (templateUser != null) {
-                System.out.println("Test successful. Found user: " + templateUser.toJson());
-
-                for (String key : templateUser.keySet()) {
-                    Object value = templateUser.get(key);
-                    LOG.ok("Key: " + key + ", Value: " + value + ", Type: " + (value != null ? value.getClass().getSimpleName() : "null"));
-//                    FIXME: remove later
-                }
-
+                LOG.ok("Test successful. Found user specified in userTemplate: " + this.configuration.getTemplateUser());
             } else {
                 LOG.ok("Test successful, but no user found with the specified email.");
             }
@@ -257,7 +273,7 @@ public class MongoDbConnector implements
 
         // Check if a document was actually updated
         if (result.getModifiedCount() == 0) {
-            throw new IllegalArgumentException("Fatal error occurred while updating projections with _id: " + uid);
+            throw new UnknownUidException();
         }
 
         return appliedDeltas;
