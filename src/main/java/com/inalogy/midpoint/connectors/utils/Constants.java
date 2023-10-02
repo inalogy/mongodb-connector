@@ -1,7 +1,7 @@
 package com.inalogy.midpoint.connectors.utils;
 
 public class Constants {
-
+    public static final short MONGODB_WRITE_EXCEPTION = 11000;
     public static final String ISO_DATE_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'";
     public static final String TIME_ZONE = "UTC";
     public static final String ICFS_NAME = "__NAME__";
