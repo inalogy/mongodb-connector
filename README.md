@@ -19,7 +19,7 @@ version 0.1.0.1
 - Schema: YES - dynamic
 - Provisioning: YES
 - Live Synchronization: No
-- Password: Yes
+- Password: No
 - Activation: Yes
 - Script execution: No
 
@@ -28,6 +28,14 @@ version 0.1.0.1
 - keyColumn also represents icfs:name
 - currently supported multivalued attributes are with a depth of 1, or one-dimensional arrays. This means the connector can handle attributes formatted as `["val1", "val2", ...]` but not nested arrays like `[["val1a", "val1b"], ["val2a", "val2b"], ...]`. All nested attributes must be strings
 
+### database setup
+1. create Database -> create Collection
+2. In collection create templateUser based on which will connector create schema. Make sure your template user have all fields populated with appropriate data.
+3. in connectorConfiguration define keyColumn which will represent shadow's icfs:name attr, for example: email 
+4. in database createIndex for attribute specified in 3rd step
+```
+db.users_idm.createIndex( { "email": 1 }, {unique: true})
+```
 
 ### Configuration
 - Set the usual username, password, and host address
