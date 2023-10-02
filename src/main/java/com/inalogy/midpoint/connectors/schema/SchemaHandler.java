@@ -1,5 +1,6 @@
 package com.inalogy.midpoint.connectors.schema;
 
+import com.inalogy.midpoint.connectors.mongodb.MongoDbConfiguration;
 import com.inalogy.midpoint.connectors.utils.Constants;
 import com.mongodb.client.MongoCollection;
 import org.bson.Document;
@@ -18,6 +19,8 @@ import org.identityconnectors.framework.common.objects.Schema;
 import org.identityconnectors.framework.common.objects.SchemaBuilder;
 import org.identityconnectors.framework.common.objects.Uid;
 
+import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -28,6 +31,10 @@ import java.util.Set;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.TimeZone;
+
+import static com.inalogy.midpoint.connectors.utils.Constants.ICFS_ACTIVATION;
+import static com.inalogy.midpoint.connectors.utils.Constants.ICFS_NAME;
+import static com.inalogy.midpoint.connectors.utils.Constants.ICFS_PASSWORD;
 
 public class SchemaHandler {
     public static final String ACCOUNT_NAME = ObjectClassUtil.createSpecialName("ACCOUNT");
@@ -41,6 +48,8 @@ public class SchemaHandler {
         schemaBuilder.defineObjectClass(objClassBuilder.build());
     }
 
+
+//is used to build a set of AttributeInfo objects based on the attributes present in a MongoDB document,
     private static Set<AttributeInfo> buildAttributeInfoSet(Document templateUser, String keyColumn, String passwordColumn) {
         Set<AttributeInfo> attrInfo = new HashSet<>();
         SimpleDateFormat sdf = new SimpleDateFormat(Constants.ISO_DATE_FORMAT);
@@ -91,7 +100,7 @@ public class SchemaHandler {
         return attrInfo;
     }
 
-    public static ConnectorObject convertDocumentToConnectorObject(Document document, Schema schema, ObjectClass objectClass, String uniqueAttributeName) {
+    public static ConnectorObject convertDocumentToConnectorObject(Document document, Schema schema, ObjectClass objectClass, Document templateUser, MongoDbConfiguration configuration) {
         ConnectorObjectBuilder builder = new ConnectorObjectBuilder();
 
         builder.setObjectClass(objectClass);
@@ -107,15 +116,17 @@ public class SchemaHandler {
         for (Map.Entry<String, Object> entry : document.entrySet()) {
             String key = entry.getKey();
             Object value = entry.getValue();
+
+            //
             if (value instanceof Date) {
                 value = value.toString();
             }
 
-            if (entry.getKey().equals("_id")){
+            if (entry.getKey().equals(Constants.MONGODB_UID)){
                 builder.setUid(new Uid(value.toString()));
                 continue;
             }
-            if (entry.getKey().equals(uniqueAttributeName)){
+            if (entry.getKey().equals(configuration.getKeyColumn())){
                 builder.setName(new Name(value.toString()));
                 continue;
             }
@@ -135,5 +146,93 @@ public class SchemaHandler {
         }
 
         return builder.build();
+    }
+
+    //designed to convert data types of a MongoDB document to align them with a template.
+    public static Document alignDataTypes(Document docToInsert, Document templateUser, MongoDbConfiguration configuration) {
+        Document alignedDocument = new Document();
+
+        for (Map.Entry<String, Object> entry : docToInsert.entrySet()) {
+            String key = entry.getKey();
+            Object value = entry.getValue();
+            Object templateValue = templateUser.get(key);
+
+            // if attr not present in templateUser it must be __SPECIAL_ATTR
+            if (templateValue == null) {
+                templateValue = templateUser.get(key);
+
+                switch (key) {
+                    case ICFS_NAME:
+                        key = configuration.getKeyColumn();
+                        break;
+//                    case ICFS_UID:
+//                        key = Constants.MONGODB_UID;
+//                        break;
+                    case ICFS_PASSWORD:
+                        key = configuration.getPasswordColumnName();
+                        break;
+                    default:
+                        //    TODO err handling
+                        break;
+                }
+            }
+
+            if (templateValue != null) {
+                Class<?> templateType = templateValue.getClass();
+//              handle multivalue attribute (one-dimensional array) all attributes inside must be strings
+                if (templateValue instanceof List) {
+                    List<?> templateList = (List<?>) templateValue;
+                    if (!templateList.isEmpty()) {
+                        templateType = templateList.get(0).getClass();
+                    }
+                    List<Object> newValueList = new ArrayList<>();
+
+                    if (value instanceof List) {
+                        for (Object item : (List<?>) value) {
+                            newValueList.add(convertValue(item, templateType));
+                        }
+                    } else {
+                        newValueList.add(convertValue(value, templateType));
+                    }
+
+                    alignedDocument.append(key, newValueList);
+                } else {
+                    //handle any other data type
+                    alignedDocument.append(key, convertValue(value, templateType));
+                }
+            } else {
+                alignedDocument.append(key, value);
+            }
+        }
+
+        return alignedDocument;
+    }
+
+    private static Object convertValue(Object value, Class<?> targetType) {
+        if (targetType.equals(String.class)) {
+            return value.toString();
+        } else if (targetType.equals(Integer.class)) {
+            return Integer.parseInt(value.toString());
+        } else if (targetType.equals(Long.class)) {
+            return Long.parseLong(value.toString());
+        } else if (targetType.equals(Double.class)) {
+            return Double.parseDouble(value.toString());
+        } else if (targetType.equals(Date.class)) {
+//            SimpleDateFormat sdf = new SimpleDateFormat(Constants.ISO_DATE_FORMAT);
+            try {
+                return new Date(Date.parse(value.toString()));
+            } catch (Exception e) { // Catching runtime exceptions
+                //FIXME: add logging for errors
+                return null;
+            }
+
+        } else if (targetType.equals(byte[].class)) {
+            // Assuming the photo is Base64 encoded
+            return Base64.getDecoder().decode(value.toString());
+        } else if (targetType.equals(Boolean.class)) {
+            return Boolean.parseBoolean(value.toString());
+        } else {
+            return value;
+        }
     }
 }
