@@ -1,7 +1,11 @@
 package com.inalogy.midpoint.connectors.mongodb;
 import com.inalogy.midpoint.connectors.filter.MongoDbFilterTranslator;
 import com.inalogy.midpoint.connectors.utils.Constants;
+import com.mongodb.BasicDBObject;
 import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.Updates;
+import com.mongodb.client.result.DeleteResult;
+import com.mongodb.client.result.UpdateResult;
 import org.bson.Document;
 import com.inalogy.midpoint.connectors.driver.Connection;
 import com.inalogy.midpoint.connectors.driver.MongoClientManager;
@@ -14,6 +18,7 @@ import static com.mongodb.client.model.Filters.eq;
 import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
 import org.identityconnectors.common.logging.Log;
+import org.identityconnectors.framework.common.exceptions.UnknownUidException;
 import org.identityconnectors.framework.common.objects.Attribute;
 import org.identityconnectors.framework.common.objects.AttributeDelta;
 import org.identityconnectors.framework.common.objects.ConnectorObject;
@@ -34,6 +39,8 @@ import org.identityconnectors.framework.spi.operations.SearchOp;
 import org.identityconnectors.framework.spi.operations.TestOp;
 import org.identityconnectors.framework.spi.operations.UpdateDeltaOp;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -123,7 +130,19 @@ public class MongoDbConnector implements
     }
     @Override
     public void delete(ObjectClass objectClass, Uid uid, OperationOptions operationOptions) {
+        if (objectClass == null || !objectClass.getObjectClassValue().equals("__ACCOUNT__")) {
+            throw new IllegalArgumentException("Invalid object class");
+        }
 
+        if (uid == null || uid.getUidValue() == null) {
+            throw new IllegalArgumentException("Uid must not be null");
+        }
+
+        DeleteResult result = this.connection.deleteOne(uid);
+        // Check if a document was actually deleted
+        if (result.getDeletedCount() == 0) {
+            throw new UnknownUidException();
+        }
     }
 
     @Override
@@ -193,7 +212,55 @@ public class MongoDbConnector implements
     }
 
     @Override
-    public Set<AttributeDelta> updateDelta(ObjectClass objectClass, Uid uid, Set<AttributeDelta> set, OperationOptions operationOptions) {
-        return null;
+    public Set<AttributeDelta> updateDelta(ObjectClass objectClass, Uid uid, Set<AttributeDelta> deltas, OperationOptions operationOptions) {
+        if (objectClass == null || !objectClass.getObjectClassValue().equals("__ACCOUNT__")) {
+            throw new IllegalArgumentException("Invalid object class");
+        }
+
+        if (uid == null || uid.getUidValue() == null) {
+            throw new IllegalArgumentException("Uid must not be null");
+        }
+
+
+
+        // Initialize an empty set to keep track of successfully applied AttributeDeltas
+        Set<AttributeDelta> appliedDeltas = new HashSet<>();
+
+        // Initialize the update operations
+        List<Bson> updateOps = new ArrayList<>();
+
+        for (AttributeDelta delta : deltas) {
+            String attrName = delta.getName();
+            List<Object> valuesToAdd = delta.getValuesToAdd();
+            List<Object> valuesToRemove = delta.getValuesToRemove();
+            List<Object> valuesToReplace = delta.getValuesToReplace();
+
+            // Handling add operations
+            if (valuesToAdd != null && !valuesToAdd.isEmpty()) {
+                updateOps.add(Updates.addToSet(attrName, new BasicDBObject("$each", valuesToAdd)));
+            }
+
+            // Handling remove operations
+            if (valuesToRemove != null && !valuesToRemove.isEmpty()) {
+                updateOps.add(Updates.pullAll(attrName, valuesToRemove));
+            }
+            // Handling replace operations
+            if (valuesToReplace != null && !valuesToReplace.isEmpty()) {
+                updateOps.add(Updates.set(attrName, valuesToReplace.size() == 1 ? valuesToReplace.get(0) : valuesToReplace));
+            }
+            // Assume delta is successfully applied
+            appliedDeltas.add(delta);
+        }
+
+        // Perform the update operation
+        UpdateResult result = this.connection.updateUser(uid, updateOps);
+
+        // Check if a document was actually updated
+        if (result.getModifiedCount() == 0) {
+            throw new IllegalArgumentException("Fatal error occurred while updating projections with _id: " + uid);
+        }
+
+        return appliedDeltas;
     }
+
 }
