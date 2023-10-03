@@ -3,6 +3,7 @@ import com.inalogy.midpoint.connectors.filter.MongoDbFilterTranslator;
 import com.inalogy.midpoint.connectors.utils.Constants;
 import com.mongodb.BasicDBObject;
 import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.Sorts;
 import com.mongodb.client.model.Updates;
 import com.mongodb.client.result.DeleteResult;
 import com.mongodb.client.result.UpdateResult;
@@ -14,6 +15,8 @@ import com.inalogy.midpoint.connectors.schema.SchemaHandler;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.FindIterable;
 import com.mongodb.MongoWriteException;
+import org.identityconnectors.framework.common.objects.SearchResult;
+import org.identityconnectors.framework.spi.SearchResultsHandler;
 
 import static com.inalogy.midpoint.connectors.utils.Constants.MONGODB_WRITE_EXCEPTION;
 import static com.mongodb.client.model.Filters.eq;
@@ -22,6 +25,7 @@ import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
 import org.identityconnectors.common.logging.Log;
 import org.identityconnectors.framework.common.exceptions.AlreadyExistsException;
+import org.identityconnectors.framework.common.exceptions.ConnectorException;
 import org.identityconnectors.framework.common.exceptions.UnknownUidException;
 import org.identityconnectors.framework.common.objects.Attribute;
 import org.identityconnectors.framework.common.objects.AttributeDelta;
@@ -60,8 +64,6 @@ public class MongoDbConnector implements
         DeleteOp {
 //    private SessionManager MongoClientManager;
     private MongoDbConfiguration configuration;
-//    private static SchemaHandler schemaHandler = null;
-    private MongoClientManager mongoClientManager;
     private Connection connection;
 //    private static SchemaCache schemaCache;
 
@@ -87,7 +89,7 @@ public class MongoDbConnector implements
     public void init(Configuration configuration) {
         this.configuration = (MongoDbConfiguration) configuration;
         this.configuration.validate();
-        this.mongoClientManager = new MongoClientManager(this.configuration);
+        MongoClientManager mongoClientManager = new MongoClientManager(this.configuration);
         this.connection = new Connection(mongoClientManager.buildMongoClient(), this.configuration);
 //        this.sessionManager = new SessionManager(mongoClient);
     }
@@ -105,7 +107,7 @@ public class MongoDbConnector implements
 
     @Override
     public Uid create(ObjectClass objectClass, Set<Attribute> attributes, OperationOptions operationOptions) {
-        if (objectClass == null || !objectClass.getObjectClassValue().equals("__ACCOUNT__")) {
+        if (objectClass == null || !objectClass.getObjectClassValue().equals(Constants.OBJECT_CLASS_ACCOUNT)) {
             throw new IllegalArgumentException("Invalid object class");
         }
 
@@ -137,10 +139,11 @@ public class MongoDbConnector implements
                 throw new AlreadyExistsException();
             } else {
                 LOG.error("FATAL_ERROR Occurred while creating account: " + e.getMessage());
+                throw new ConnectorException("FATAL_ERROR Occurred while creating account: " + e.getMessage());
             }
         }
 
-        // Get the generated _id field from MongoDB and return it as a Uid
+        // Get the generated _id field from MongoDB and return it as Uid
         Object id = transformedDocument.get(Constants.MONGODB_UID);
         if (id != null) {
             return new Uid(id.toString());
@@ -150,7 +153,7 @@ public class MongoDbConnector implements
     }
     @Override
     public void delete(ObjectClass objectClass, Uid uid, OperationOptions operationOptions) {
-        if (objectClass == null || !objectClass.getObjectClassValue().equals("__ACCOUNT__")) {
+        if (objectClass == null || !objectClass.getObjectClassValue().equals(Constants.OBJECT_CLASS_ACCOUNT)) {
             throw new IllegalArgumentException("Invalid object class");
         }
 
@@ -169,7 +172,6 @@ public class MongoDbConnector implements
     public Schema schema() {
         if (schema == null) {
             LOG.info("Cache schema");
-//            SchemaCache schemaCache = new SchemaCache(this.connection.getTemplateUser(), configuration);
             SchemaBuilder schemaBuilder = new SchemaBuilder(MongoDbConnector.class);
             SchemaHandler.buildObjectClass(schemaBuilder, this.configuration.getKeyColumn(), this.configuration.getPasswordColumnName(), this.connection.getTemplateUser());
 
@@ -187,30 +189,54 @@ public class MongoDbConnector implements
     @Override
     public void executeQuery(ObjectClass objectClass, MongoDbFilter query, ResultsHandler handler, OperationOptions options) {
         LOG.info("executeQuery on {0}, query: {1}, options: {2}", objectClass, query, options);
-//        FIXME:PAGING!
-        if (schema == null){
+        if (schema == null) {
             LOG.info("refreshing schema in executeQuery");
             schema();
         }
+        int pageSize = 0;
+        int pageOffset = 0;
+        SearchResult searchResult = new SearchResult();
+        ((SearchResultsHandler)handler).handleResult(searchResult);
+        if (options != null) {
+            Integer tempPageSize = options.getPageSize();
+            Integer tempPageOffset = options.getPagedResultsOffset();
 
-        if (query != null && query != null) {
+            pageSize = (tempPageSize != null) ? tempPageSize : 0;
+            pageOffset = (tempPageOffset != null) ? tempPageOffset : 0;
+            //empty paging should be present when running import or recon tasks
+        }
+
+        FindIterable<Document> documents;
+
+        if (query != null) {
             // Query by specific UID
             Document result = this.connection.getSingleUser(query);
-            if (result == null) {
-                throw new UnknownUidException();
-
-            } else if (result != null) {
+            if (result != null) {
                 ConnectorObject connectorObject = SchemaHandler.convertDocumentToConnectorObject(result, schema, objectClass, this.connection.getTemplateUser(), this.configuration);
                 handler.handle(connectorObject);
+                return;
+            } else {
+                throw new UnknownUidException();
             }
         } else {
             // Query all records
-            FindIterable<Document> allDocuments = this.connection.getAllUsers();
-            for (Document result : allDocuments) {
-                ConnectorObject connectorObject =  SchemaHandler.convertDocumentToConnectorObject(result, schema, objectClass, this.connection.getTemplateUser(), this.configuration);
-                handler.handle(connectorObject);
+            documents = this.connection.getAllUsers(pageSize, pageOffset);
+        }
+
+        if (documents != null) {
+            for (Document result : documents) {
+                if (result != null) {
+                    ConnectorObject connectorObject = SchemaHandler.convertDocumentToConnectorObject(result, schema, objectClass, this.connection.getTemplateUser(), this.configuration);
+                    boolean finish = !handler.handle(connectorObject);
+                    if (finish) {
+                        break;
+                    }
+                }
             }
         }
+//        else {
+//            LOG.warn("No documents found");
+//        }
     }
 
     @Override
@@ -229,7 +255,7 @@ public class MongoDbConnector implements
 
     @Override
     public Set<AttributeDelta> updateDelta(ObjectClass objectClass, Uid uid, Set<AttributeDelta> deltas, OperationOptions operationOptions) {
-        if (objectClass == null || !objectClass.getObjectClassValue().equals("__ACCOUNT__")) {
+        if (objectClass == null || !objectClass.getObjectClassValue().equals(Constants.OBJECT_CLASS_ACCOUNT)) {
             throw new IllegalArgumentException("Invalid object class");
         }
 

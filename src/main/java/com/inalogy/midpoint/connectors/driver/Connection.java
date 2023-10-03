@@ -10,6 +10,7 @@ import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.Sorts;
 import com.mongodb.client.model.Updates;
 import com.mongodb.client.result.DeleteResult;
 import com.mongodb.client.result.UpdateResult;
@@ -73,9 +74,21 @@ public class Connection {
         return null;
     }
 
-    public  FindIterable<Document> getAllUsers(){
-        return this.collection.find();
+    public  FindIterable<Document> getAllUsers(int pageSize, int pageOffset){
+        if (pageOffset == 0 && (pageSize == 0 )){
+            return this.collection.find();
+        } else if (pageOffset == 1 && pageSize == 1 ) {
+            return null;
+
+        } else {
+            // paged find
+            return this.collection.find()
+                    .sort(Sorts.ascending(Constants.MONGODB_UID))
+                    .skip(pageOffset)
+                    .limit(pageSize);
+        }
     }
+
     public void insertOne(Document document) {
         this.collection.insertOne(document);
     }
