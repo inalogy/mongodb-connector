@@ -2,7 +2,6 @@ package com.inalogy.midpoint.connectors.schema;
 
 import com.inalogy.midpoint.connectors.mongodb.MongoDbConfiguration;
 import com.inalogy.midpoint.connectors.utils.Constants;
-import com.mongodb.client.MongoCollection;
 import org.bson.Document;
 import org.identityconnectors.framework.common.objects.AttributeBuilder;
 import org.identityconnectors.framework.common.objects.AttributeInfo;
@@ -32,7 +31,6 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.TimeZone;
 
-import static com.inalogy.midpoint.connectors.utils.Constants.ICFS_ACTIVATION;
 import static com.inalogy.midpoint.connectors.utils.Constants.ICFS_NAME;
 import static com.inalogy.midpoint.connectors.utils.Constants.ICFS_PASSWORD;
 
