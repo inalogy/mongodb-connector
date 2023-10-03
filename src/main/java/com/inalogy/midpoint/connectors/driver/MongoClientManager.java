@@ -11,6 +11,13 @@ import org.identityconnectors.common.security.GuardedString;
 import java.util.Arrays;
 import java.util.Collections;
 
+/**
+ * Manages the creation of MongoClient instances.
+ * This class is responsible for configuring and building a MongoClient
+ * based on the provided MongoDbConfiguration.
+ * @author P-Rovnak
+ * @version 1.0
+ */
 public class MongoClientManager {
 
     private final MongoDbConfiguration configuration;
@@ -18,6 +25,12 @@ public class MongoClientManager {
         this.configuration = mongoDbConfiguration;
     }
 
+
+    /**
+     * Builds and returns a configured MongoClient.
+     *
+     * @return A MongoClient configured according to the MongoDbConfiguration.
+     */
     public MongoClient buildMongoClient() {
         char[] password = passwordAccessor(configuration.getPassword());
 
@@ -30,7 +43,12 @@ public class MongoClientManager {
     }
 
 
-
+    /**
+     * Utility method to extract the password from a GuardedString.
+     *
+     * @param guardedPassword The GuardedString containing the password.
+     * @return The password as a char array.
+     */
     private  char[] passwordAccessor(GuardedString guardedPassword) {
         final char[][] passwordArray = new char[1][];
         if (guardedPassword != null) {

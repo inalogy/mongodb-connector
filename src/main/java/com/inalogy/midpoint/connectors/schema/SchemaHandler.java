@@ -34,9 +34,28 @@ import java.util.TimeZone;
 import static com.inalogy.midpoint.connectors.utils.Constants.ICFS_NAME;
 import static com.inalogy.midpoint.connectors.utils.Constants.ICFS_PASSWORD;
 
+/**
+ * Utility class for handling the schema-related functionalities in the MongoDB connector.
+ * <p>
+ * This class is responsible for creating ObjectClass schemas, building attributes,
+ * and converting MongoDB Documents into ConnectorObjects.
+ * </p>
+ *
+ * @author P-Rovnak
+ * @version 1.0
+ */
 public class SchemaHandler {
     public static final String ACCOUNT_NAME = ObjectClassUtil.createSpecialName("ACCOUNT");
 
+
+    /**
+     * Builds the ObjectClass schema for account objects.
+     *
+     * @param schemaBuilder  The schema builder to which the ObjectClass definition will be added.
+     * @param keyColumn      The column used as the unique identifier for the ObjectClass.
+     * @param passwordColumn The column used for storing passwords.
+     * @param templateUser   A MongoDB Document that serves as a template for the ObjectClass.
+     */
     public static void buildObjectClass(SchemaBuilder schemaBuilder, String keyColumn, String passwordColumn, Document templateUser) {
         ObjectClassInfoBuilder objClassBuilder = new ObjectClassInfoBuilder();
         objClassBuilder.setType(ACCOUNT_NAME);
@@ -47,7 +66,18 @@ public class SchemaHandler {
     }
 
 
-//is used to build a set of AttributeInfo objects based on the attributes present in a MongoDB document,
+    /**
+     * Builds a set of AttributeInfo objects based on the attributes present in a MongoDB document.
+     * <p>
+     * This method iterates through the key-value pairs in the template MongoDB Document and creates
+     * AttributeInfo objects based on the types and values. Special handling is done for key and password columns.
+     * </p>
+     *
+     * @param templateUser   The MongoDB Document that serves as a template for creating AttributeInfo objects.
+     * @param keyColumn      The column used as the unique identifier for the ObjectClass.
+     * @param passwordColumn The column used for storing passwords.
+     * @return               A Set of AttributeInfo objects.
+     */
     private static Set<AttributeInfo> buildAttributeInfoSet(Document templateUser, String keyColumn, String passwordColumn) {
         Set<AttributeInfo> attrInfo = new HashSet<>();
         SimpleDateFormat sdf = new SimpleDateFormat(Constants.ISO_DATE_FORMAT);
@@ -98,6 +128,16 @@ public class SchemaHandler {
         return attrInfo;
     }
 
+    /**
+     * Converts a MongoDB Document to a ConnectorObject.
+     *
+     * @param document       The MongoDB Document to convert.
+     * @param schema         The schema used for the conversion.
+     * @param objectClass    The ObjectClass type for the resulting ConnectorObject.
+     * @param templateUser   A MongoDB Document that serves as a template for the ObjectClass.
+     * @param configuration  The MongoDB Configuration.
+     * @return               A ConnectorObject built from the MongoDB Document.
+     */
     public static ConnectorObject convertDocumentToConnectorObject(Document document, Schema schema, ObjectClass objectClass, Document templateUser, MongoDbConfiguration configuration) {
         ConnectorObjectBuilder builder = new ConnectorObjectBuilder();
 
@@ -146,7 +186,14 @@ public class SchemaHandler {
         return builder.build();
     }
 
-    //designed to convert data types of a MongoDB document to align them with a template.
+    /**
+     * Aligns the data types of a MongoDB Document to match those of a template Document.
+     *
+     * @param docToInsert    The MongoDB Document whose types need to be aligned.
+     * @param templateUser   The template Document against which to align types.
+     * @param configuration  The MongoDB Configuration.
+     * @return               A new MongoDB Document with aligned types.
+     */
     public static Document alignDataTypes(Document docToInsert, Document templateUser, MongoDbConfiguration configuration) {
         Document alignedDocument = new Document();
 

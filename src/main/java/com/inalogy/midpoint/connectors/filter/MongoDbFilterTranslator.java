@@ -8,6 +8,16 @@ import org.identityconnectors.framework.common.objects.Uid;
 import org.identityconnectors.framework.common.objects.filter.AbstractFilterTranslator;
 import org.identityconnectors.framework.common.objects.filter.EqualsFilter;
 
+/**
+ * Translates ConnId filter expressions into a format that can be understood by MongoDB.
+ * <p>
+ * This class extends AbstractFilterTranslator and overrides the method to create
+ * an EqualsExpression specific for MongoDB. It currently supports filtering based on Uid (_id).
+ * </p>
+ *
+ * @author P-Rovnak
+ * @version 1.0
+ */
 public class MongoDbFilterTranslator extends AbstractFilterTranslator<MongoDbFilter> {
     private static final Log LOG = Log.getLog(MongoDbFilterTranslator.class);
 

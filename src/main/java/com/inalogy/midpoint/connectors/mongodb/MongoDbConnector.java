@@ -52,8 +52,15 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-@ConnectorClass(displayNameKey = "mongodb.connector.display", configurationClass = MongoDbConfiguration.class)
 
+/**
+ * Main class for the MongoDB Connector implementing the ConnId interfaces.
+ * It provides CRUD operations for managing accounts in a MongoDB database.
+ *
+ * @author P-Rovnak
+ * @version 1.0
+ */
+@ConnectorClass(displayNameKey = "mongodb.connector.display", configurationClass = MongoDbConfiguration.class)
 public class MongoDbConnector implements
         PoolableConnector,
         SchemaOp,
@@ -105,6 +112,21 @@ public class MongoDbConnector implements
 
     }
 
+    /**
+     * Creates a new account in MongoDB and returns its unique identifier (__UID__).
+     * <p>
+     * Method flow:
+     * <ol>
+     *   <li>Transforms the provided attributes into a MongoDB Document.</li>
+     *   <li>Inserts the Document into the MongoDB collection.</li>
+     *   <li>Uses the generated MongoDB _id as the ConnId __UID__ for the account.</li>
+     * </ol>
+     * </p>
+     *
+     * @return Uid The unique identifier (__UID__) for the created account, which corresponds to the MongoDB _id.
+     * @throws IllegalArgumentException if the objectClass is invalid.
+     * @throws AlreadyExistsException if an account with the same unique field already exists.
+     */
     @Override
     public Uid create(ObjectClass objectClass, Set<Attribute> attributes, OperationOptions operationOptions) {
         if (objectClass == null || !objectClass.getObjectClassValue().equals(Constants.OBJECT_CLASS_ACCOUNT)) {
@@ -128,7 +150,7 @@ public class MongoDbConnector implements
                 }
             }
         }
-        Document transformedDocument = null;
+        Document transformedDocument;
         try {
             transformedDocument = SchemaHandler.alignDataTypes(docToInsert, this.connection.getTemplateUser(), this.configuration);
             this.connection.insertOne(transformedDocument);
@@ -151,6 +173,12 @@ public class MongoDbConnector implements
             throw new IllegalStateException("Document was not inserted correctly, _id field is null");
         }
     }
+    /**
+     * Deletes an existing account from MongoDB.
+     *
+     * @throws IllegalArgumentException if the objectClass or uid is invalid.
+     * @throws UnknownUidException if the uid does not exist in the database.
+     */
     @Override
     public void delete(ObjectClass objectClass, Uid uid, OperationOptions operationOptions) {
         if (objectClass == null || !objectClass.getObjectClassValue().equals(Constants.OBJECT_CLASS_ACCOUNT)) {
@@ -186,6 +214,21 @@ public class MongoDbConnector implements
         return new MongoDbFilterTranslator();
     }
 
+    /**
+     * Executes a query to fetch accounts from MongoDB and handles the results.
+     * <p>
+     * Method flow:
+     * <ol>
+     *   <li>Refreshes the schema if it's null.</li>
+     *   <li>Initializes paging options like pageSize and pageOffset from OperationOptions.</li>
+     *   <li>If a specific UID query is provided, fetches a single user. Otherwise, fetches all users based on paging options.</li>
+     *   <li>Converts the MongoDB Documents to ConnectorObjects.</li>
+     *   <li>Handles the results using the provided ResultsHandler.</li>
+     * </ol>
+     * </p>
+     *
+     * @throws UnknownUidException if a specific UID query returns no results.
+     */
     @Override
     public void executeQuery(ObjectClass objectClass, MongoDbFilter query, ResultsHandler handler, OperationOptions options) {
         LOG.info("executeQuery on {0}, query: {1}, options: {2}", objectClass, query, options);
@@ -234,9 +277,6 @@ public class MongoDbConnector implements
                 }
             }
         }
-//        else {
-//            LOG.warn("No documents found");
-//        }
     }
 
     @Override
@@ -253,6 +293,27 @@ public class MongoDbConnector implements
         }
     }
 
+
+    /**
+     * Updates an existing account in MongoDB using a set of attribute deltas.
+     * <p>
+     * Method flow:
+     * <ol>
+     *   <li>Iterates through the provided AttributeDeltas to construct MongoDB update operations.</li>
+     *   <li>Executes the MongoDB update operations to modify the account.</li>
+     * </ol>
+     * </p>
+     * Each AttributeDelta can perform one of the following:
+     * <ul>
+     *   <li>Add values to a multi-valued attribute.</li>
+     *   <li>Remove values from a multi-valued attribute.</li>
+     *   <li>Replace the value(s) of an attribute.</li>
+     * </ul>
+     *
+     * @return Set<AttributeDelta> The set of successfully applied AttributeDeltas.
+     * @throws IllegalArgumentException if the objectClass or uid is invalid.
+     * @throws UnknownUidException     if the uid does not exist in the database or no modifications were made.
+     */
     @Override
     public Set<AttributeDelta> updateDelta(ObjectClass objectClass, Uid uid, Set<AttributeDelta> deltas, OperationOptions operationOptions) {
         if (objectClass == null || !objectClass.getObjectClassValue().equals(Constants.OBJECT_CLASS_ACCOUNT)) {
