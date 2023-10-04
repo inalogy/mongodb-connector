@@ -1,8 +1,12 @@
 package com.inalogy.midpoint.connectors.schema;
 
+import static com.inalogy.midpoint.connectors.utils.Constants.ICFS_NAME;
+import static com.inalogy.midpoint.connectors.utils.Constants.ICFS_PASSWORD;
 import com.inalogy.midpoint.connectors.mongodb.MongoDbConfiguration;
 import com.inalogy.midpoint.connectors.utils.Constants;
+
 import org.bson.Document;
+
 import org.identityconnectors.framework.common.objects.AttributeBuilder;
 import org.identityconnectors.framework.common.objects.AttributeInfo;
 import org.identityconnectors.framework.common.objects.AttributeInfoBuilder;
@@ -21,18 +25,12 @@ import org.identityconnectors.framework.common.objects.Uid;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.TimeZone;
-
-import static com.inalogy.midpoint.connectors.utils.Constants.ICFS_NAME;
-import static com.inalogy.midpoint.connectors.utils.Constants.ICFS_PASSWORD;
 
 /**
  * Utility class for handling the schema-related functionalities in the MongoDB connector.
@@ -80,8 +78,6 @@ public class SchemaHandler {
      */
     private static Set<AttributeInfo> buildAttributeInfoSet(Document templateUser, String keyColumn, String passwordColumn) {
         Set<AttributeInfo> attrInfo = new HashSet<>();
-        SimpleDateFormat sdf = new SimpleDateFormat(Constants.ISO_DATE_FORMAT);
-        sdf.setTimeZone(TimeZone.getTimeZone(Constants.TIME_ZONE));
 
         for (Map.Entry<String, Object> entry : templateUser.entrySet()) {
             String name = entry.getKey();
@@ -92,7 +88,7 @@ public class SchemaHandler {
             }
 
             if (value instanceof Date) {
-                value = sdf.format((Date) value);
+                value = value.toString();
             }
 
 
