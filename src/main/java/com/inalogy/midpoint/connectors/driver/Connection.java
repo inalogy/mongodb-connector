@@ -17,6 +17,7 @@ import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
 
+import org.identityconnectors.common.logging.Log;
 import org.identityconnectors.framework.common.objects.Uid;
 
 import java.util.List;
@@ -31,27 +32,21 @@ import java.util.List;
  * @version 1.0
  */
 public class Connection {
+    private static final Log LOG = Log.getLog(Connection.class);
 
     private final MongoClient mongoClient;
-    private final MongoDatabase database;
+//    private final MongoDatabase database;
     private final MongoCollection<Document> collection;
     private final MongoDbConfiguration configuration;
-    private final Document templateUser;
+    private  Document templateUser;
 
     public Connection(MongoClient mongoClient, MongoDbConfiguration configuration) {
         this.mongoClient = mongoClient;
         this.configuration = configuration;
-        this.database = mongoClient.getDatabase(this.configuration.getDatabase());
+        MongoDatabase database = mongoClient.getDatabase(this.configuration.getDatabase());
         this.collection = database.getCollection(this.configuration.getCollection());
         this.templateUser = this.getTemplateUser();
     }
-
-//    public MongoDatabase getDatabase(String dbName) {
-//        if (mongoClient == null) {
-//            throw new IllegalStateException("Not connected to MongoDB");
-//        }
-//        return mongoClient.getDatabase(dbName);
-//    }
 
     /**
      * Retrieves the template user from the MongoDB collection.
@@ -59,8 +54,12 @@ public class Connection {
      * @return A Document representing the template user.
      */
     public Document getTemplateUser() {
-        Bson filter = Filters.eq(this.configuration.getKeyColumn(), this.configuration.getTemplateUser());
-        return collection.find(filter).first();
+        if (this.templateUser == null) {
+            Bson filter = Filters.eq(this.configuration.getKeyColumn(), this.configuration.getTemplateUser());
+            return collection.find(filter).first();
+        } else {
+            return this.templateUser;
+        }
     }
 
 
@@ -71,7 +70,6 @@ public class Connection {
      * @return A Document representing the user.
      */
     public Document getSingleUser(MongoDbFilter query) {
-//        Bson filter = Filters.eq(this.configuration.getKeyColumn(), name);
         if (query.byUid != null) {
             Bson filterById = Filters.eq(Constants.MONGODB_UID, new ObjectId(query.byUid));
             return collection.find(filterById).first();
@@ -91,6 +89,7 @@ public class Connection {
      * @return A FindIterable<Document> containing the user documents.
      */
     public  FindIterable<Document> getAllUsers(int pageSize, int pageOffset){
+//        LOG.info("Executing getAllUsers with pageSize: {0}, pageOffset: {1}", pageSize, pageOffset);
         if (pageOffset == 0 && (pageSize == 0 )){
             return this.collection.find();
         } else if (pageOffset == 1 && pageSize == 1 ) {
@@ -133,6 +132,8 @@ public class Connection {
      */
     public void close() {
         if (mongoClient != null) {
+            LOG.info("Closing connection");
+            this.templateUser = null;
             mongoClient.close();
         }
     }

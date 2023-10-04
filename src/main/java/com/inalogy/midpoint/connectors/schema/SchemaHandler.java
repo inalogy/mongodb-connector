@@ -7,6 +7,7 @@ import com.inalogy.midpoint.connectors.utils.Constants;
 
 import org.bson.Document;
 
+import org.identityconnectors.common.logging.Log;
 import org.identityconnectors.framework.common.objects.AttributeBuilder;
 import org.identityconnectors.framework.common.objects.AttributeInfo;
 import org.identityconnectors.framework.common.objects.AttributeInfoBuilder;
@@ -22,6 +23,7 @@ import org.identityconnectors.framework.common.objects.Schema;
 import org.identityconnectors.framework.common.objects.SchemaBuilder;
 import org.identityconnectors.framework.common.objects.Uid;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collection;
@@ -31,6 +33,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.Date;
+import java.util.TimeZone;
 
 /**
  * Utility class for handling the schema-related functionalities in the MongoDB connector.
@@ -43,6 +46,9 @@ import java.util.Date;
  * @version 1.0
  */
 public class SchemaHandler {
+
+    private static final Log LOG = Log.getLog(SchemaHandler.class);
+
     public static final String ACCOUNT_NAME = ObjectClassUtil.createSpecialName("ACCOUNT");
 
 
@@ -74,7 +80,7 @@ public class SchemaHandler {
      * @param templateUser   The MongoDB Document that serves as a template for creating AttributeInfo objects.
      * @param keyColumn      The column used as the unique identifier for the ObjectClass.
      * @param passwordColumn The column used for storing passwords.
-     * @return               A Set of AttributeInfo objects.
+     * @return A Set of AttributeInfo objects.
      */
     private static Set<AttributeInfo> buildAttributeInfoSet(Document templateUser, String keyColumn, String passwordColumn) {
         Set<AttributeInfo> attrInfo = new HashSet<>();
@@ -127,14 +133,13 @@ public class SchemaHandler {
     /**
      * Converts a MongoDB Document to a ConnectorObject.
      *
-     * @param document       The MongoDB Document to convert.
-     * @param schema         The schema used for the conversion.
-     * @param objectClass    The ObjectClass type for the resulting ConnectorObject.
-     * @param templateUser   A MongoDB Document that serves as a template for the ObjectClass.
-     * @param configuration  The MongoDB Configuration.
-     * @return               A ConnectorObject built from the MongoDB Document.
+     * @param document      The MongoDB Document to convert.
+     * @param schema        The schema used for the conversion.
+     * @param objectClass   The ObjectClass type for the resulting ConnectorObject.
+     * @param configuration The MongoDB Configuration.
+     * @return A ConnectorObject built from the MongoDB Document.
      */
-    public static ConnectorObject convertDocumentToConnectorObject(Document document, Schema schema, ObjectClass objectClass, Document templateUser, MongoDbConfiguration configuration) {
+    public static ConnectorObject convertDocumentToConnectorObject(Document document, Schema schema, ObjectClass objectClass, MongoDbConfiguration configuration) {
         ConnectorObjectBuilder builder = new ConnectorObjectBuilder();
 
         builder.setObjectClass(objectClass);
@@ -153,14 +158,17 @@ public class SchemaHandler {
 
             //
             if (value instanceof Date) {
-                value = value.toString();
+                //mongo java driver automatically transform IsoDate we need to convert it back....
+                SimpleDateFormat sdf = new SimpleDateFormat(Constants.ISO_DATE_FORMAT);
+                sdf.setTimeZone(TimeZone.getTimeZone(Constants.TIME_ZONE));
+                value = sdf.format((Date) value);
             }
 
-            if (entry.getKey().equals(Constants.MONGODB_UID)){
+            if (entry.getKey().equals(Constants.MONGODB_UID)) {
                 builder.setUid(new Uid(value.toString()));
                 continue;
             }
-            if (entry.getKey().equals(configuration.getKeyColumn())){
+            if (entry.getKey().equals(configuration.getKeyColumn())) {
                 builder.setName(new Name(value.toString()));
                 continue;
             }
@@ -185,10 +193,10 @@ public class SchemaHandler {
     /**
      * Aligns the data types of a MongoDB Document to match those of a template Document.
      *
-     * @param docToInsert    The MongoDB Document whose types need to be aligned.
-     * @param templateUser   The template Document against which to align types.
-     * @param configuration  The MongoDB Configuration.
-     * @return               A new MongoDB Document with aligned types.
+     * @param docToInsert   The MongoDB Document whose types need to be aligned.
+     * @param templateUser  The template Document against which to align types.
+     * @param configuration The MongoDB Configuration.
+     * @return A new MongoDB Document with aligned types.
      */
     public static Document alignDataTypes(Document docToInsert, Document templateUser, MongoDbConfiguration configuration) {
         Document alignedDocument = new Document();
@@ -249,31 +257,69 @@ public class SchemaHandler {
         return alignedDocument;
     }
 
+    public static List<Object> alignDeltaValues(List<Object> deltaValues, Object templateValue) {
+        if (deltaValues == null || templateValue == null) {
+            return deltaValues;  // If either is null, no alignment is done.
+        }
+
+        List<Object> alignedValues = new ArrayList<>();
+        Class<?> templateType = templateValue.getClass();
+
+        // Handle multi-valued attributes
+        if (templateValue instanceof List) {
+            List<?> templateList = (List<?>) templateValue;
+            if (!templateList.isEmpty()) {
+                templateType = templateList.get(0).getClass();
+            }
+            for (Object value : deltaValues) {
+                alignedValues.add(convertValue(value, templateType));
+            }
+        } else {
+            // Single-valued attributes
+            for (Object value : deltaValues) {
+                alignedValues.add(convertValue(value, templateType));
+            }
+        }
+
+        return alignedValues;
+    }
+
     private static Object convertValue(Object value, Class<?> targetType) {
         if (targetType.equals(String.class)) {
             return value.toString();
+
         } else if (targetType.equals(Integer.class)) {
             return Integer.parseInt(value.toString());
+
         } else if (targetType.equals(Long.class)) {
             return Long.parseLong(value.toString());
+
         } else if (targetType.equals(Double.class)) {
             return Double.parseDouble(value.toString());
+
         } else if (targetType.equals(Date.class)) {
-//            SimpleDateFormat sdf = new SimpleDateFormat(Constants.ISO_DATE_FORMAT);
-            try {
-                return new Date(Date.parse(value.toString()));
-            } catch (Exception e) { // Catching runtime exceptions
-                //FIXME: add logging for errors
-                return null;
-            }
+            return handleTimeZoneConversion(value);
 
         } else if (targetType.equals(byte[].class)) {
-            // Assuming the photo is Base64 encoded
+            // Assuming the photo is Base64 encoded || WORK in progress
             return Base64.getDecoder().decode(value.toString());
+
         } else if (targetType.equals(Boolean.class)) {
             return Boolean.parseBoolean(value.toString());
+
         } else {
             return value;
+        }
+    }
+
+    private static Date handleTimeZoneConversion(Object value) {
+        SimpleDateFormat sdf = new SimpleDateFormat(Constants.ISO_DATE_FORMAT);
+        sdf.setTimeZone(TimeZone.getTimeZone(Constants.TIME_ZONE));
+        try {
+            return sdf.parse(value.toString());
+        } catch (Exception e) { // Catching runtime exceptions
+            LOG.error("fatal error occured while converting ISO-DATE value: {0}", value);
+            return null;
         }
     }
 }

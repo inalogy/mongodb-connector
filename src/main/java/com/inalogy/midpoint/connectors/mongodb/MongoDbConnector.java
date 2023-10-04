@@ -146,9 +146,10 @@ public class MongoDbConnector implements
         try {
             transformedDocument = SchemaHandler.alignDataTypes(docToInsert, this.connection.getTemplateUser(), this.configuration);
             this.connection.insertOne(transformedDocument);
+            LOG.ok("Account successfully created");
         } catch (MongoWriteException e) {
             if (e.getError().getCode() == Constants.MONGODB_WRITE_EXCEPTION) {
-                LOG.ok("alreadyExists " + e.getMessage());
+                LOG.info("alreadyExists " + e.getMessage());
                 // Handle the duplicate key error
                 throw new AlreadyExistsException();
             } else {
@@ -162,23 +163,24 @@ public class MongoDbConnector implements
         if (id != null) {
             return new Uid(id.toString());
         } else {
-            throw new IllegalStateException("Document was not inserted correctly, _id field is null");
+            LOG.error("FATAL_ERROR Occurred while creating account _id is Null " );
+            throw new ConnectorException("Document was not inserted correctly, _id field is null");
         }
     }
     /**
      * Deletes an existing account from MongoDB.
      *
-     * @throws IllegalArgumentException if the objectClass or uid is invalid.
+     * @throws ConnectorException if the objectClass or uid is invalid.
      * @throws UnknownUidException if the uid does not exist in the database.
      */
     @Override
     public void delete(ObjectClass objectClass, Uid uid, OperationOptions operationOptions) {
         if (objectClass == null || !objectClass.getObjectClassValue().equals(Constants.OBJECT_CLASS_ACCOUNT)) {
-            throw new IllegalArgumentException("Invalid object class");
+            throw new ConnectorException("Invalid object class");
         }
 
         if (uid == null || uid.getUidValue() == null) {
-            throw new IllegalArgumentException("Uid must not be null");
+            throw new ConnectorException("Uid must not be null");
         }
 
         DeleteResult result = this.connection.deleteOne(uid);
@@ -223,7 +225,7 @@ public class MongoDbConnector implements
      */
     @Override
     public void executeQuery(ObjectClass objectClass, MongoDbFilter query, ResultsHandler handler, OperationOptions options) {
-        LOG.info("executeQuery on {0}, query: {1}, options: {2}", objectClass, query, options);
+        LOG.ok("executeQuery on {0}, query: {1}, options: {2}", objectClass, query, options);
         if (schema == null) {
             LOG.info("refreshing schema in executeQuery");
             schema();
@@ -247,7 +249,7 @@ public class MongoDbConnector implements
             // Query by specific UID
             Document result = this.connection.getSingleUser(query);
             if (result != null) {
-                ConnectorObject connectorObject = SchemaHandler.convertDocumentToConnectorObject(result, schema, objectClass, this.connection.getTemplateUser(), this.configuration);
+                ConnectorObject connectorObject = SchemaHandler.convertDocumentToConnectorObject(result, schema, objectClass, this.configuration);
                 handler.handle(connectorObject);
                 return;
             } else {
@@ -261,7 +263,7 @@ public class MongoDbConnector implements
         if (documents != null) {
             for (Document result : documents) {
                 if (result != null) {
-                    ConnectorObject connectorObject = SchemaHandler.convertDocumentToConnectorObject(result, schema, objectClass, this.connection.getTemplateUser(), this.configuration);
+                    ConnectorObject connectorObject = SchemaHandler.convertDocumentToConnectorObject(result, schema, objectClass, this.configuration);
                     boolean finish = !handler.handle(connectorObject);
                     if (finish) {
                         break;
@@ -276,9 +278,9 @@ public class MongoDbConnector implements
         try {
             Document templateUser = this.connection.getTemplateUser();
             if (templateUser != null) {
-                LOG.ok("Test successful. Found user specified in userTemplate: " + this.configuration.getTemplateUser());
+                LOG.info("Test successful. Found user specified in userTemplate: " + this.configuration.getTemplateUser());
             } else {
-                LOG.ok("Test successful, but no user found with the specified email.");
+                LOG.info("Test successful, but no user found with the specified email.");
             }
         } catch (Exception e) {
             LOG.error("Test failed: " + e.getMessage());
@@ -309,26 +311,25 @@ public class MongoDbConnector implements
     @Override
     public Set<AttributeDelta> updateDelta(ObjectClass objectClass, Uid uid, Set<AttributeDelta> deltas, OperationOptions operationOptions) {
         if (objectClass == null || !objectClass.getObjectClassValue().equals(Constants.OBJECT_CLASS_ACCOUNT)) {
-            throw new IllegalArgumentException("Invalid object class");
+            throw new ConnectorException("Invalid object class");
         }
 
         if (uid == null || uid.getUidValue() == null) {
-            throw new IllegalArgumentException("Uid must not be null");
+            throw new ConnectorException("Uid must not be null");
         }
-
-
-
-        // Initialize an empty set to keep track of successfully applied AttributeDeltas
-        Set<AttributeDelta> appliedDeltas = new HashSet<>();
+        LOG.ok("Executing updateDelta for UID: {0}", uid);
+        Document templateUser = this.connection.getTemplateUser();
 
         // Initialize the update operations
         List<Bson> updateOps = new ArrayList<>();
 
         for (AttributeDelta delta : deltas) {
             String attrName = delta.getName();
-            List<Object> valuesToAdd = delta.getValuesToAdd();
-            List<Object> valuesToRemove = delta.getValuesToRemove();
-            List<Object> valuesToReplace = delta.getValuesToReplace();
+            Object templateValue = templateUser.get(attrName);
+
+            List<Object> valuesToAdd = SchemaHandler.alignDeltaValues(delta.getValuesToAdd(), templateValue);
+            List<Object> valuesToRemove = SchemaHandler.alignDeltaValues(delta.getValuesToRemove(), templateValue);
+            List<Object> valuesToReplace = SchemaHandler.alignDeltaValues(delta.getValuesToReplace(), templateValue);
 
             // Handling add operations
             if (valuesToAdd != null && !valuesToAdd.isEmpty()) {
@@ -340,22 +341,29 @@ public class MongoDbConnector implements
                 updateOps.add(Updates.pullAll(attrName, valuesToRemove));
             }
             // Handling replace operations
-            if (valuesToReplace != null && !valuesToReplace.isEmpty()) {
-                updateOps.add(Updates.set(attrName, valuesToReplace.size() == 1 ? valuesToReplace.get(0) : valuesToReplace));
+            if (valuesToReplace != null ) {
+                if (valuesToReplace.isEmpty()) {
+                    // set -> new value Null
+                    updateOps.add(Updates.set(attrName, null));
+                } else if (valuesToReplace.get(0) == null) {
+                    // set -> new value Null
+                    updateOps.add(Updates.set(attrName, null));
+                } else {
+                    updateOps.add(Updates.set(attrName, valuesToReplace.size() == 1 ? valuesToReplace.get(0) : valuesToReplace));
+                }
             }
-            // Assume delta is successfully applied
-            appliedDeltas.add(delta);
         }
 
         // Perform the update operation
         UpdateResult result = this.connection.updateUser(uid, updateOps);
-
-        // Check if a document was actually updated
-        if (result.getModifiedCount() == 0) {
+        // result.getModifiedCount() == 0    when setting attribute to null modificationCount doesn't change, need better error handling
+        if (result.getMatchedCount() == 0) {
+            LOG.error("unknownUid {} in updateDelta", uid);
             throw new UnknownUidException();
         }
 
-        return appliedDeltas;
+        LOG.ok("Successfully updated document for UID {0}. Modified count {1}", uid, result.getModifiedCount());
+        return null;
     }
 
 }
