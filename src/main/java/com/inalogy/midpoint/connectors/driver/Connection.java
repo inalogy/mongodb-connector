@@ -1,12 +1,10 @@
 package com.inalogy.midpoint.connectors.driver;
+
 import com.inalogy.midpoint.connectors.filter.MongoDbFilter;
 import com.inalogy.midpoint.connectors.mongodb.MongoDbConfiguration;
 import com.inalogy.midpoint.connectors.utils.Constants;
-import com.mongodb.MongoClientSettings;
-import com.mongodb.ServerAddress;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.Filters;
@@ -14,23 +12,15 @@ import com.mongodb.client.model.Sorts;
 import com.mongodb.client.model.Updates;
 import com.mongodb.client.result.DeleteResult;
 import com.mongodb.client.result.UpdateResult;
+
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
+
 import org.identityconnectors.framework.common.objects.Uid;
-import org.identityconnectors.framework.spi.Configuration;
 
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
-import java.util.Map;
-import java.util.Base64;
 
-import static com.inalogy.midpoint.connectors.utils.Constants.ICFS_ACTIVATION;
-import static com.inalogy.midpoint.connectors.utils.Constants.ICFS_PASSWORD;
-import static com.inalogy.midpoint.connectors.utils.Constants.ICFS_UID;
 
 /**
  * Manages database operations on a MongoDB instance.

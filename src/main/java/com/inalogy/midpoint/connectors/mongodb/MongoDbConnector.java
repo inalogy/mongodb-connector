@@ -1,28 +1,23 @@
 package com.inalogy.midpoint.connectors.mongodb;
+
 import com.inalogy.midpoint.connectors.filter.MongoDbFilterTranslator;
 import com.inalogy.midpoint.connectors.utils.Constants;
-import com.mongodb.BasicDBObject;
-import com.mongodb.client.model.Filters;
-import com.mongodb.client.model.Sorts;
-import com.mongodb.client.model.Updates;
-import com.mongodb.client.result.DeleteResult;
-import com.mongodb.client.result.UpdateResult;
-import org.bson.Document;
 import com.inalogy.midpoint.connectors.driver.Connection;
 import com.inalogy.midpoint.connectors.driver.MongoClientManager;
 import com.inalogy.midpoint.connectors.filter.MongoDbFilter;
 import com.inalogy.midpoint.connectors.schema.SchemaHandler;
-import com.mongodb.client.MongoDatabase;
+
 import com.mongodb.client.FindIterable;
 import com.mongodb.MongoWriteException;
+import com.mongodb.BasicDBObject;
+import com.mongodb.client.model.Updates;
+import com.mongodb.client.result.DeleteResult;
+import com.mongodb.client.result.UpdateResult;
+import org.bson.Document;
+import org.bson.conversions.Bson;
+
 import org.identityconnectors.framework.common.objects.SearchResult;
 import org.identityconnectors.framework.spi.SearchResultsHandler;
-
-import static com.inalogy.midpoint.connectors.utils.Constants.MONGODB_WRITE_EXCEPTION;
-import static com.mongodb.client.model.Filters.eq;
-
-import org.bson.conversions.Bson;
-import org.bson.types.ObjectId;
 import org.identityconnectors.common.logging.Log;
 import org.identityconnectors.framework.common.exceptions.AlreadyExistsException;
 import org.identityconnectors.framework.common.exceptions.ConnectorException;
@@ -69,11 +64,8 @@ public class MongoDbConnector implements
         CreateOp,
         UpdateDeltaOp,
         DeleteOp {
-//    private SessionManager MongoClientManager;
     private MongoDbConfiguration configuration;
     private Connection connection;
-//    private static SchemaCache schemaCache;
-
     private static  Schema schema = null;
     private static final Log LOG = Log.getLog(MongoDbConnector.class);
     public void checkAlive() {
@@ -155,7 +147,7 @@ public class MongoDbConnector implements
             transformedDocument = SchemaHandler.alignDataTypes(docToInsert, this.connection.getTemplateUser(), this.configuration);
             this.connection.insertOne(transformedDocument);
         } catch (MongoWriteException e) {
-            if (e.getError().getCode() == MONGODB_WRITE_EXCEPTION) {
+            if (e.getError().getCode() == Constants.MONGODB_WRITE_EXCEPTION) {
                 LOG.ok("alreadyExists " + e.getMessage());
                 // Handle the duplicate key error
                 throw new AlreadyExistsException();

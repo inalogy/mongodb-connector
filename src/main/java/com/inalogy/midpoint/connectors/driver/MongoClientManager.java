@@ -1,11 +1,13 @@
 package com.inalogy.midpoint.connectors.driver;
 
 import com.inalogy.midpoint.connectors.mongodb.MongoDbConfiguration;
+
 import com.mongodb.MongoClientSettings;
 import com.mongodb.MongoCredential;
 import com.mongodb.ServerAddress;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
+
 import org.identityconnectors.common.security.GuardedString;
 
 import java.util.Arrays;

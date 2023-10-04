@@ -1,6 +1,5 @@
 package com.inalogy.midpoint.connectors.filter;
 
-import com.inalogy.midpoint.connectors.mongodb.MongoDbConnector;
 import org.identityconnectors.common.logging.Log;
 import org.identityconnectors.framework.common.objects.Attribute;
 import org.identityconnectors.framework.common.objects.Name;
