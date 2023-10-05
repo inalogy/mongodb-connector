@@ -1,0 +1,221 @@
+<resource xmlns:icfc="http://midpoint.evolveum.com/xml/ns/public/connector/icf-1/connector-schema-3"
+          xmlns:icfs="http://midpoint.evolveum.com/xml/ns/public/connector/icf-1/resource-schema-3"
+          xmlns:cap="http://midpoint.evolveum.com/xml/ns/public/resource/capabilities-3"
+          xmlns:q="http://prism.evolveum.com/xml/ns/public/query-3"
+          xmlns:ri="http://midpoint.evolveum.com/xml/ns/public/resource/instance-3"
+          xmlns:t="http://prism.evolveum.com/xml/ns/public/types-3"
+          xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+          oid="d7216c36-5d60-46f1-8793-a779afb323e7">
+
+    <name>mongodb</name>
+    <lifecycleState>active</lifecycleState>
+
+    <connectorRef relation="default" type="ConnectorType">
+        <filter>
+            <q:and>
+                <q:equal>
+                    <q:path>connectorType</q:path>
+                    <q:value>com.inalogy.midpoint.connectors.mongodb.MongoDbConnector</q:value>
+                </q:equal>
+            </q:and>
+        </filter>
+    </connectorRef>
+
+    <connectorConfiguration>
+        <icfc:configurationProperties xmlns:gen902="http://midpoint.evolveum.com/xml/ns/public/connector/icf-1/bundle/com.inalogy.midpoint.connectors.mongodb/com.inalogy.midpoint.connectors.mongodb.MongoDbConnector">
+            <gen902:host>localhost</gen902:host>
+            <gen902:port>27017</gen902:port>
+            <gen902:templateUser>schemaUserTemplate</gen902:templateUser>
+            <gen902:username>username</gen902:username>
+            <gen902:database>testDatabase</gen902:database>
+            <gen902:collection>idmUsers</gen902:collection>
+            <gen902:keyColumn>idmId</gen902:keyColumn>
+            <gen902:password>
+                <t:clearValue>p@sswdxD=-</t:clearValue>
+            </gen902:password>
+        </icfc:configurationProperties>
+    </connectorConfiguration>
+
+    <schemaHandling>
+        <objectType>
+            <displayName>account</displayName>
+            <default>true</default>
+            <delineation>
+                <objectClass>ri:AccountObjectClass</objectClass>
+            </delineation>
+            <focus>
+                <type>UserType</type>
+            </focus>
+            <kind>account</kind>
+            <intent>default</intent>
+            <attribute>
+                <ref>icfs:name</ref>
+                <outbound>
+                    <strength>strong</strength>
+                    <source>
+                        <path>name</path>
+                    </source>
+                </outbound>
+            </attribute>
+            <attribute>
+                <ref>ri:login</ref>
+                <outbound>
+                    <strength>strong</strength>
+                    <source>
+                        <path>name</path>
+                    </source>
+                </outbound>
+            </attribute>
+
+            <attribute>
+                <ref>ri:email</ref>
+                <outbound>
+                    <strength>strong</strength>
+                    <source>
+                        <path>emailAddress</path>
+                    </source>
+                </outbound>
+            </attribute>
+            <attribute>
+                <ref>ri:firstName</ref>
+                <outbound>
+                    <strength>strong</strength>
+                    <source>
+                        <path>givenName</path>
+                    </source>
+                </outbound>
+            </attribute>
+            <attribute>
+                <ref>ri:lastName</ref>
+                <outbound>
+                    <strength>strong</strength>
+                    <source>
+                        <path>familyName</path>
+                    </source>
+                </outbound>
+            </attribute>
+            <attribute>
+                <ref>ri:titlePrefix</ref>
+                <outbound>
+                    <strength>strong</strength>
+                    <source>
+                        <path>honorificPrefix</path>
+                    </source>
+                </outbound>
+            </attribute>
+            <attribute>
+                <ref>ri:titleSuffix</ref>
+                <outbound>
+                    <strength>strong</strength>
+                    <source>
+                        <path>honorificSuffix</path>
+                    </source>
+                </outbound>
+            </attribute>
+            <attribute>
+                <ref>ri:idmCreatedAt</ref>
+                <outbound>
+                    <strength>weak</strength>
+                    <expression>
+                        <script>
+                            <code>
+                                import java.text.SimpleDateFormat
+
+                                SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
+
+                                Date currentDate = new Date()
+
+                                return formatter.format(currentDate)
+                            </code>
+                        </script>
+                    </expression>
+                </outbound>
+            </attribute>
+            <activation>
+                <existence>
+                    <outbound>
+                        <strength>weak</strength>
+                        <expression>
+                            <value>true</value>
+                        </expression>
+                    </outbound>
+                </existence>
+                <administrativeStatus>
+                    <outbound>
+                        <strength>strong</strength>
+                        <expression>
+                            <script>
+                                <code><![CDATA[
+                                    import com.evolveum.midpoint.xml.ns._public.common.common_3.ActivationStatusType
+
+                                    Boolean isEnabled = focus?.activation?.effectiveStatus == ActivationStatusType.ENABLED
+                                    if (isEnabled && legal) {
+                                        return ActivationStatusType.ENABLED
+                                    }
+                                    return ActivationStatusType.DISABLED
+                                    ]]></code>
+                            </script>
+                        </expression>
+                    </outbound>
+                </administrativeStatus>
+
+            </activation>
+            <correlation>
+                <correlators>
+                    <filter>
+                        <ownerFilter>
+                            <q:equal>
+                                <q:path>name</q:path>
+                                <expression>
+                                    <path>$shadow/attributes/icfs:name</path>
+                                </expression>
+                            </q:equal>
+                        </ownerFilter>
+                    </filter>
+                </correlators>
+            </correlation>
+            <synchronization>
+                <reaction>
+                    <name>unmatched -> do nothing</name>
+                    <situation>unmatched</situation>
+                </reaction>
+                <reaction>
+                    <name>unlinked -> link</name>
+                    <actions>
+                        <link/>
+                    </actions>
+                </reaction>
+                <reaction>
+                    <name>linked -> synchronized</name>
+                    <situation>linked</situation>
+                    <actions>
+                        <synchronize/>
+                    </actions>
+                </reaction>
+            </synchronization>
+        </objectType>
+    </schemaHandling>
+    <capabilities>
+        <configured>
+            <cap:activation>
+                <cap:status>
+                    <cap:attribute>ri:isActive</cap:attribute>
+                    <cap:enableValue>true</cap:enableValue>
+                    <cap:disableValue>false</cap:disableValue>
+                </cap:status>
+            </cap:activation>
+            <cap:delete>
+                <cap:enabled>true</cap:enabled>
+            </cap:delete>
+            <cap:update>
+                <cap:enabled>true</cap:enabled>
+            </cap:update>
+            <cap:create>
+                <cap:enabled>true</cap:enabled>
+            </cap:create>
+            <cap:countObjects>
+                <cap:simulate>pagedSearchEstimate</cap:simulate>
+            </cap:countObjects>
+        </configured>
+    </capabilities>
+</resource>
