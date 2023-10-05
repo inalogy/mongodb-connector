@@ -25,7 +25,6 @@ public class MongoDbFilterTranslator extends AbstractFilterTranslator<MongoDbFil
         LOG.ok("createEqualsExpression, filter: {0}, not: {1}", filter, not);
 
         if (not) {
-            System.out.println("not supported");
             LOG.ok("not in equalsExpression");
             return null;            // not supported
         }
