@@ -88,20 +88,29 @@ public class Connection {
      * @param pageOffset The offset to start returning documents from.
      * @return A FindIterable<Document> containing the user documents.
      */
-    public  FindIterable<Document> getAllUsers(int pageSize, int pageOffset){
-//        LOG.info("Executing getAllUsers with pageSize: {0}, pageOffset: {1}", pageSize, pageOffset);
-        if (pageOffset == 0 && (pageSize == 0 )){
-            return this.collection.find();
-        } else if (pageOffset == 1 && pageSize == 1 ) {
-            return null;
+    public FindIterable<Document> getAllUsers(int pageSize, int pageOffset){
+        LOG.ok("Executing getAllUsers with pageSize {0} pageOffset {1}", pageSize, pageOffset);
 
-        } else {
-            // paged find
-            return this.collection.find()
-                    .sort(Sorts.ascending(Constants.MONGODB_UID))
-                    .skip(pageOffset)
-                    .limit(pageSize);
+        // If pageSize and pageOffset are both zero, return all documents
+        if (pageOffset == 0 && pageSize == 0) {
+            return this.collection.find();
         }
+
+        // If pageOffset is 1 and pageSize is 1, return null (bug in midpoint?)
+        if (pageOffset == 1 && pageSize == 1) {
+            return null;
+        }
+
+        // Initialize the find query with sorting
+        FindIterable<Document> findQuery = this.collection.find()
+                .sort(Sorts.ascending(Constants.MONGODB_UID));
+
+        // Apply pagination if pageOffset and pageSize are greater than zero
+        if (pageOffset > 0 && pageSize > 0) {
+            findQuery = findQuery.skip(pageOffset - 1).limit(pageSize);
+        }
+
+        return findQuery;
     }
 
 
