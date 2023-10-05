@@ -98,7 +98,6 @@ public class MongoDbConnector implements
         LOG.info("Disposing MognoDb connector");
         if (this.connection != null){
             this.connection.close();
-//            schemaCache = null;
             schema = null;
         }
 
@@ -116,13 +115,13 @@ public class MongoDbConnector implements
      * </p>
      *
      * @return Uid The unique identifier (__UID__) for the created account, which corresponds to the MongoDB _id.
-     * @throws IllegalArgumentException if the objectClass is invalid.
+     * @throws ConnectorException if the objectClass is invalid.
      * @throws AlreadyExistsException if an account with the same unique field already exists.
      */
     @Override
     public Uid create(ObjectClass objectClass, Set<Attribute> attributes, OperationOptions operationOptions) {
         if (objectClass == null || !objectClass.getObjectClassValue().equals(Constants.OBJECT_CLASS_ACCOUNT)) {
-            throw new IllegalArgumentException("Invalid object class");
+            throw new ConnectorException("Invalid object class");
         }
 
         Document docToInsert = new Document();
@@ -305,7 +304,7 @@ public class MongoDbConnector implements
      * </ul>
      *
      * @return Set<AttributeDelta> The set of successfully applied AttributeDeltas.
-     * @throws IllegalArgumentException if the objectClass or uid is invalid.
+     * @throws ConnectorException if the objectClass or uid is invalid.
      * @throws UnknownUidException     if the uid does not exist in the database or no modifications were made.
      */
     @Override
