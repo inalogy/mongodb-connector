@@ -148,7 +148,7 @@ public class MongoDbConnector implements
             LOG.ok("Account successfully created");
         } catch (MongoWriteException e) {
             if (e.getError().getCode() == Constants.MONGODB_WRITE_EXCEPTION) {
-                LOG.info("alreadyExists " + e.getMessage());
+                LOG.info("alreadyExists {0}", e.getMessage());
                 // Handle the duplicate key error
                 throw new AlreadyExistsException();
             } else {
@@ -231,8 +231,7 @@ public class MongoDbConnector implements
         }
         int pageSize = 0;
         int pageOffset = 0;
-        SearchResult searchResult = new SearchResult();
-        ((SearchResultsHandler)handler).handleResult(searchResult);
+
         if (options != null) {
             Integer tempPageSize = options.getPageSize();
             Integer tempPageOffset = options.getPagedResultsOffset();
