@@ -1,6 +1,7 @@
 package com.inalogy.midpoint.connectors.mongodb;
 
 import org.identityconnectors.common.security.GuardedString;
+import org.identityconnectors.framework.common.exceptions.ConfigurationException;
 import org.identityconnectors.framework.spi.AbstractConfiguration;
 import org.identityconnectors.framework.spi.ConfigurationProperty;
 
@@ -17,7 +18,7 @@ public class MongoDbConfiguration extends AbstractConfiguration {
     /**
      * Server port.
      */
-    private int port;
+    private int port = -1;
 
     /**
      * Username of the user, used for authentication.
@@ -38,9 +39,29 @@ public class MongoDbConfiguration extends AbstractConfiguration {
      * User password.
      */
     private GuardedString password = null;
+    private String additionalHosts;
+
     @Override
     public void validate() {
-
+        //FIXME: not working...
+        if (this.getHost() == null || this.getHost().isEmpty()){
+            throw new ConfigurationException("Host must be defined");
+        }
+        if (this.getPort() ==  -1){
+            throw new ConfigurationException("Port must be defined");
+        }
+        if (this.getDatabase() == null || this.getDatabase().isEmpty()){
+            throw new ConfigurationException("Database must be defined");
+        }
+        if (this.getCollection() == null || this.getCollection().isEmpty()){
+            throw new ConfigurationException("Collection must be defined");
+        }
+        if (this.getUsername() == null || this.getUsername().isEmpty()){
+            throw new ConfigurationException("Username must be defined");
+        }
+        if (this.getKeyColumn() == null || this.getKeyColumn().isEmpty()){
+            throw new ConfigurationException("KeyColumn (uniqueAttribute) must be defined");
+        }
     }
     @ConfigurationProperty(order = 100)
     public String getHost() {
@@ -107,8 +128,8 @@ public class MongoDbConfiguration extends AbstractConfiguration {
      * Please notice, there are used non default message keys
      */
     @ConfigurationProperty(order = 7,
-            displayMessageKey = "TABLE_DISPLAY",
-            helpMessageKey = "TABLE_HELP")
+            displayMessageKey = "COLLECTION_DISPLAY",
+            helpMessageKey = "COLLECTION_HELP")
     public String getCollection() {
         return this.collection;
     }
@@ -143,21 +164,13 @@ public class MongoDbConfiguration extends AbstractConfiguration {
         this.keyColumn = keyColumn;
     }
 
-
-    /**
-     * Return the jdbcUrlTemplate
-     *
-     * @return url value
-     */
-    @ConfigurationProperty(order = 11,
-            displayMessageKey = "URL_TEMPLATE_DISPLAY",
-            helpMessageKey = "URL_TEMPLATE_HELP")
-    public String getJdbcUrlTemplate() {
-        return jdbcUrlTemplate;
+    @ConfigurationProperty(order = 106)
+    public String getAdditionalHosts() {
+        return additionalHosts;
     }
 
-    public void setJdbcUrlTemplate(String value) {
-        this.jdbcUrlTemplate = value;
+    public void setAdditionalHosts(String additionalHosts) {
+        this.additionalHosts = additionalHosts;
     }
 
     public String getTemplateUser() {return templateUser;}
