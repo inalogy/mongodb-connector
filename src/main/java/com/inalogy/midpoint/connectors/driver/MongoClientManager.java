@@ -4,6 +4,7 @@ import com.inalogy.midpoint.connectors.mongodb.MongoDbConfiguration;
 
 import com.mongodb.MongoClientSettings;
 import com.mongodb.MongoCredential;
+import com.mongodb.ReadPreference;
 import com.mongodb.ServerAddress;
 import com.mongodb.WriteConcern;
 import com.mongodb.client.MongoClient;
@@ -12,6 +13,13 @@ import com.mongodb.client.MongoClients;
 import org.identityconnectors.common.logging.Log;
 import org.identityconnectors.common.security.GuardedString;
 
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.TrustManagerFactory;
+import java.security.KeyManagementException;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Arrays;
@@ -40,11 +48,24 @@ public class MongoClientManager {
      */
     public MongoClient buildMongoClient() {
         char[] password = passwordAccessor(configuration.getPassword());
-        MongoClientSettings.Builder settingsBuilder = MongoClientSettings.builder()
-                .credential(MongoCredential.createCredential(configuration.getUsername(), configuration.getDatabase(), password))
-                .writeConcern(WriteConcern.ACKNOWLEDGED);
 
-        // Check for Multiple hosts for replica set first
+        MongoClientSettings.Builder settingsBuilder = MongoClientSettings.builder()
+                .credential(MongoCredential.createCredential(configuration.getUsername(), configuration.getDatabase(), password));
+
+        if (configuration.getUseTLS()) {
+            // Initialize SSL Context and get pubk from midpoint keystore
+            SSLContext sslContext;
+            try {
+                sslContext = createSSLContext();
+                LOG.info("Applying SSLContext");
+            } catch (Exception e) {
+                LOG.error("Failed to initialize SSL context", e);
+                throw new RuntimeException("Failed to initialize SSL context", e);
+            }
+            settingsBuilder.applyToSslSettings(builder -> builder.enabled(true).context(sslContext));
+        }
+
+        // Multiple hosts for replica set
         if (configuration.getAdditionalHosts() != null && !configuration.getAdditionalHosts().isEmpty()) {
             LOG.info("building MongoClient with additional hosts");
             String[] additionalHosts = configuration.getAdditionalHosts().split(",");
@@ -57,9 +78,29 @@ public class MongoClientManager {
             }
             settingsBuilder.applyToClusterSettings(builder -> builder.hosts(hosts));
         }
-        // Else, use Single host & port
-        else if (configuration.getHost() != null) {
-            LOG.info("building MongoClient with additional hosts");
+
+        // Set replica set
+        if (configuration.getReplicaSet() != null) {
+            settingsBuilder.applyToClusterSettings(builder -> builder.requiredReplicaSetName(configuration.getReplicaSet()));
+        }
+
+        // Set read preference
+        if (configuration.getReadPreference() != null) {
+            settingsBuilder.readPreference(ReadPreference.valueOf(configuration.getReadPreference()));
+        }
+
+        // Set write concern
+        if (configuration.getW() != null) {
+            WriteConcern wc = new WriteConcern(configuration.getW());
+            if (configuration.getJournal() != null) {
+                wc = wc.withJournal(configuration.getJournal());
+            }
+            settingsBuilder.writeConcern(wc);
+        }
+
+        // Single host & port
+        if (configuration.getHost() != null && (configuration.getAdditionalHosts() == null || configuration.getAdditionalHosts().isEmpty())) {
+            LOG.info("building MongoClient with single host");
             settingsBuilder.applyToClusterSettings(builder ->
                     builder.hosts(Collections.singletonList(new ServerAddress(configuration.getHost(), configuration.getPort()))));
         }
@@ -82,5 +123,16 @@ public class MongoClientManager {
         return passwordArray[0];
     }
 
+    private SSLContext createSSLContext() throws NoSuchAlgorithmException, KeyManagementException, KeyStoreException {
+        // Initialize default trust manager
+        TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+        tmf.init((KeyStore) null);
+        TrustManager[] trustManagers = tmf.getTrustManagers();
 
+        // Initialize SSLContext with default trust managers
+        SSLContext sslContext = SSLContext.getInstance("TLS");
+        sslContext.init(null, trustManagers, null);
+
+        return sslContext;
+    }
 }

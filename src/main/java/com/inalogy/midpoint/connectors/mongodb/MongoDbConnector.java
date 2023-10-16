@@ -16,8 +16,6 @@ import com.mongodb.client.result.UpdateResult;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 
-import org.identityconnectors.framework.common.objects.SearchResult;
-import org.identityconnectors.framework.spi.SearchResultsHandler;
 import org.identityconnectors.common.logging.Log;
 import org.identityconnectors.framework.common.exceptions.AlreadyExistsException;
 import org.identityconnectors.framework.common.exceptions.ConnectorException;
@@ -90,7 +88,6 @@ public class MongoDbConnector implements
         this.configuration.validate();
         MongoClientManager mongoClientManager = new MongoClientManager(this.configuration);
         this.connection = new Connection(mongoClientManager.buildMongoClient(), this.configuration);
-//        this.sessionManager = new SessionManager(mongoClient);
     }
 
     @Override
@@ -274,6 +271,7 @@ public class MongoDbConnector implements
     @Override
     public void test() {
         try {
+            configuration.validate();
             Document templateUser = this.connection.getTemplateUser();
             if (templateUser != null) {
                 LOG.info("Test successful. Found user specified in userTemplate: " + this.configuration.getTemplateUser());
