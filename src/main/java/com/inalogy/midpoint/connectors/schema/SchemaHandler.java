@@ -7,6 +7,7 @@ import com.inalogy.midpoint.connectors.utils.Constants;
 
 import org.bson.Document;
 
+import org.bson.types.Binary;
 import org.identityconnectors.common.logging.Log;
 import org.identityconnectors.framework.common.objects.AttributeBuilder;
 import org.identityconnectors.framework.common.objects.AttributeInfo;
@@ -86,6 +87,7 @@ public class SchemaHandler {
         Set<AttributeInfo> attrInfo = new HashSet<>();
 
         for (Map.Entry<String, Object> entry : templateUser.entrySet()) {
+            AttributeInfoBuilder attrBld = new AttributeInfoBuilder();
             String name = entry.getKey();
             Object value = entry.getValue();
 
@@ -97,8 +99,13 @@ public class SchemaHandler {
                 value = value.toString();
             }
 
+            if (value instanceof org.bson.types.Binary) {
+                LOG.info("[NOT IMPLEMENTED] skipping attribute with Binary data type");
+                //ignore binary att
+                continue;
+            }
 
-            AttributeInfoBuilder attrBld = new AttributeInfoBuilder();
+
 
             if (name.equalsIgnoreCase(Constants.MONGODB_UID)) {
                 attrBld.setName(Uid.NAME);
