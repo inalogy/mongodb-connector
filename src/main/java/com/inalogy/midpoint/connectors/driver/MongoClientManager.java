@@ -12,6 +12,7 @@ import com.mongodb.client.MongoClients;
 
 import org.identityconnectors.common.logging.Log;
 import org.identityconnectors.common.security.GuardedString;
+import org.identityconnectors.framework.common.exceptions.ConfigurationException;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
@@ -91,10 +92,24 @@ public class MongoClientManager {
 
         // Set write concern
         if (configuration.getW() != null) {
-            WriteConcern wc = new WriteConcern(configuration.getW());
+            WriteConcern wc;
+            String wValue = configuration.getW();
+            try {
+                int wInt = Integer.parseInt(wValue);
+                wc = new WriteConcern(wInt);
+            } catch (NumberFormatException e) {
+                // Not an integer, treat as a string
+                if (!wValue.equals("majority")){
+                    LOG.error("Received invalid writeConcern in configuration Property");
+                    throw new ConfigurationException("Received invalid writeConcern");
+                }
+                wc = new WriteConcern(wValue);
+            }
+
             if (configuration.getJournal() != null) {
                 wc = wc.withJournal(configuration.getJournal());
             }
+
             settingsBuilder.writeConcern(wc);
         }
 

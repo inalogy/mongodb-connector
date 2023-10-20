@@ -40,10 +40,14 @@ import org.identityconnectors.framework.spi.operations.SearchOp;
 import org.identityconnectors.framework.spi.operations.TestOp;
 import org.identityconnectors.framework.spi.operations.UpdateDeltaOp;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import java.util.TimeZone;
 
 
 /**
@@ -313,11 +317,34 @@ public class MongoDbConnector implements
         if (uid == null || uid.getUidValue() == null) {
             throw new ConnectorException("Uid must not be null");
         }
-        LOG.ok("Executing updateDelta for UID: {0}", uid);
-        Document templateUser = this.connection.getTemplateUser();
 
         // Initialize the update operations
         List<Bson> updateOps = new ArrayList<>();
+
+        if (this.configuration.getIdmUpdatedAt() != null){
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
+            sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
+            String currentDateTime = sdf.format(new Date());
+
+            String updateTimeAttribute = this.configuration.getIdmUpdatedAt();
+            if (updateTimeAttribute != null) {
+                Iterator<AttributeDelta> iterator = deltas.iterator();
+                // we need to check if idmUpdatedAt is not already mapped in resource schema, if yes remove it
+                while (iterator.hasNext()) {
+                    AttributeDelta delta = iterator.next();
+                    if (updateTimeAttribute.equals(delta.getName())) {
+                        iterator.remove();
+                        break;
+                    }
+                }
+
+                // Add currentDateTime to your update operations.
+                updateOps.add(Updates.set(updateTimeAttribute, currentDateTime));
+            }
+        }
+        LOG.ok("Executing updateDelta for UID: {0}", uid);
+        Document templateUser = this.connection.getTemplateUser();
+
 
         for (AttributeDelta delta : deltas) {
             String attrName = delta.getName();

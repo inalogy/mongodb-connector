@@ -67,6 +67,7 @@ public class MongoDbConfiguration extends AbstractConfiguration {
     // Authentication Options
     private String authSource;
     private String authMechanism;
+    private String idmUpdatedAt;
 
     // Getters and Setters
 
@@ -194,6 +195,12 @@ public class MongoDbConfiguration extends AbstractConfiguration {
         return authMechanism;
     }
 
+    @ConfigurationProperty(order = 26, displayMessageKey = "idmUpdatedAt.display", helpMessageKey = "idmUpdatedAt.help")
+    public String getIdmUpdatedAt() {
+        return idmUpdatedAt;
+    }
+
+    public void setIdmUpdatedAt(String idmUpdatedAt){this.idmUpdatedAt = idmUpdatedAt;}
     public void setReplicaSet(String replicaSet) {
         this.replicaSet = replicaSet;
     }
