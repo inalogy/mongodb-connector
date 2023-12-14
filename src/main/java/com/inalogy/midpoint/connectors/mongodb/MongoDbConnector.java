@@ -317,6 +317,14 @@ public class MongoDbConnector implements
         if (uid == null || uid.getUidValue() == null) {
             throw new ConnectorException("Uid must not be null");
         }
+        //docasny fix na midpoint 4.7.x self-service password reset bug
+        boolean invalidPasswordAttribute = deltas.stream()
+                .filter(delta -> Constants.ICFS_PASSWORD.equals(delta.getName()))
+                .count() == 1;
+        if (invalidPasswordAttribute){
+            LOG.info("removing invalid password attribute");
+            return null;
+        }
 
         // Initialize the update operations
         List<Bson> updateOps = new ArrayList<>();
