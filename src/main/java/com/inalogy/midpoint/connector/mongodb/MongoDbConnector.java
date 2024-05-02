@@ -7,6 +7,10 @@ import com.inalogy.midpoint.connector.mongodb.driver.MongoClientManager;
 import com.inalogy.midpoint.connector.mongodb.filter.MongoDbFilter;
 import com.inalogy.midpoint.connector.mongodb.schema.SchemaHandler;
 
+import com.mongodb.MongoException;
+import com.mongodb.MongoSecurityException;
+import com.mongodb.MongoSocketOpenException;
+import com.mongodb.MongoTimeoutException;
 import com.mongodb.client.FindIterable;
 import com.mongodb.MongoWriteException;
 import com.mongodb.BasicDBObject;
@@ -18,6 +22,7 @@ import org.bson.conversions.Bson;
 
 import org.identityconnectors.common.logging.Log;
 import org.identityconnectors.framework.common.exceptions.AlreadyExistsException;
+import org.identityconnectors.framework.common.exceptions.ConnectionFailedException;
 import org.identityconnectors.framework.common.exceptions.ConnectorException;
 import org.identityconnectors.framework.common.exceptions.UnknownUidException;
 import org.identityconnectors.framework.common.objects.Attribute;
@@ -77,6 +82,8 @@ public class MongoDbConnector implements
                 LOG.error("checkAlive successful, but no user found with the specified KeyColumnName Attribute. Please check connectorConfiguration and make sure that templateUser is present in database.");
             }
         } catch (Exception e) {
+            LOG.error("Connection to mongodb is not alive. " + e);
+            throw new ConnectionFailedException();
         }
     }
 
@@ -87,20 +94,34 @@ public class MongoDbConnector implements
 
     @Override
     public void init(Configuration configuration) {
-        this.configuration = (MongoDbConfiguration) configuration;
-        this.configuration.validate();
-        MongoClientManager mongoClientManager = new MongoClientManager(this.configuration);
-        this.connection = new Connection(mongoClientManager.buildMongoClient(), this.configuration);
+        try {
+            this.configuration = (MongoDbConfiguration) configuration;
+            this.configuration.validate();
+            MongoClientManager mongoClientManager = new MongoClientManager(this.configuration);
+            this.connection = new Connection(mongoClientManager.buildMongoClient(), this.configuration);
+        } catch (MongoSocketOpenException | MongoTimeoutException e) {
+            LOG.error("FATAL_ERROR Network issue while connecting to MongoDB", e);
+        } catch (MongoSecurityException e) {
+            LOG.error("FATAL_ERROR Security issue in MongoDB connection", e);
+        } catch (MongoException e) {
+            LOG.error("FATAL_ERROR Uncategorized error while initialising mongodb connector", e);
+        }
     }
 
     @Override
     public void dispose() {
-        LOG.info("Disposing MognoDb connector");
-        if (this.connection != null){
-            this.connection.close();
-            schema = null;
+        LOG.info("Disposing of MongoDB connector");
+        if (this.connection != null) {
+            try {
+                this.connection.close();
+            } catch (Exception e) {
+                LOG.error("Error occurred while closing MongoDB connection", e);
+            } finally {
+                this.connection = null;
+            }
         }
-
+        schema = null;
+        this.configuration = null;
     }
 
     /**
