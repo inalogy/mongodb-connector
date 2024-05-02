@@ -1,4 +1,4 @@
-package com.inalogy.midpoint.connectors.mongodb;
+package com.inalogy.midpoint.connector.mongodb;
 import org.testng.annotations.Test;
 
 

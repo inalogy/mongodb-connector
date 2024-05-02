@@ -1,4 +1,4 @@
-package com.inalogy.midpoint.connectors.filter;
+package com.inalogy.midpoint.connector.mongodb.filter;
 
 /**
  * Represents a filter to be applied on MongoDB queries.

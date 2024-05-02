@@ -1,11 +1,11 @@
-package com.inalogy.midpoint.connectors.mongodb;
+package com.inalogy.midpoint.connector.mongodb;
 
-import com.inalogy.midpoint.connectors.filter.MongoDbFilterTranslator;
-import com.inalogy.midpoint.connectors.utils.Constants;
-import com.inalogy.midpoint.connectors.driver.Connection;
-import com.inalogy.midpoint.connectors.driver.MongoClientManager;
-import com.inalogy.midpoint.connectors.filter.MongoDbFilter;
-import com.inalogy.midpoint.connectors.schema.SchemaHandler;
+import com.inalogy.midpoint.connector.mongodb.filter.MongoDbFilterTranslator;
+import com.inalogy.midpoint.connector.mongodb.utils.Constants;
+import com.inalogy.midpoint.connector.mongodb.driver.Connection;
+import com.inalogy.midpoint.connector.mongodb.driver.MongoClientManager;
+import com.inalogy.midpoint.connector.mongodb.filter.MongoDbFilter;
+import com.inalogy.midpoint.connector.mongodb.schema.SchemaHandler;
 
 import com.mongodb.client.FindIterable;
 import com.mongodb.MongoWriteException;
@@ -43,7 +43,6 @@ import org.identityconnectors.framework.spi.operations.UpdateDeltaOp;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;

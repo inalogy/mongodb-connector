@@ -1,4 +1,4 @@
-package com.inalogy.midpoint.connectors.filter;
+package com.inalogy.midpoint.connector.mongodb.filter;
 
 import org.identityconnectors.common.logging.Log;
 import org.identityconnectors.framework.common.objects.Attribute;

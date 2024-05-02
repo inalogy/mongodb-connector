@@ -15,14 +15,14 @@
             <q:and>
                 <q:equal>
                     <q:path>connectorType</q:path>
-                    <q:value>com.inalogy.midpoint.connectors.mongodb.MongoDbConnector</q:value>
+                    <q:value>com.inalogy.midpoint.connector.mongodb.MongoDbConnector</q:value>
                 </q:equal>
             </q:and>
         </filter>
     </connectorRef>
 
     <connectorConfiguration>
-        <icfc:configurationProperties xmlns:gen902="http://midpoint.evolveum.com/xml/ns/public/connector/icf-1/bundle/com.inalogy.midpoint.connectors.mongodb/com.inalogy.midpoint.connectors.mongodb.MongoDbConnector">
+        <icfc:configurationProperties xmlns:gen902="http://midpoint.evolveum.com/xml/ns/public/connector/icf-1/bundle/com.inalogy.midpoint.connector.mongodb/com.inalogy.midpoint.connector.mongodb.MongoDbConnector">
             <gen902:host>localhost</gen902:host>
             <gen902:port>27017</gen902:port>
             <gen902:templateUser>schemaUserTemplate</gen902:templateUser>

@@ -1,13 +1,10 @@
-package com.inalogy.midpoint.connectors.schema;
+package com.inalogy.midpoint.connector.mongodb.schema;
 
-import static com.inalogy.midpoint.connectors.utils.Constants.ICFS_NAME;
-import static com.inalogy.midpoint.connectors.utils.Constants.ICFS_PASSWORD;
-import com.inalogy.midpoint.connectors.mongodb.MongoDbConfiguration;
-import com.inalogy.midpoint.connectors.utils.Constants;
+import com.inalogy.midpoint.connector.mongodb.utils.Constants;
+import com.inalogy.midpoint.connector.mongodb.MongoDbConfiguration;
 
 import org.bson.Document;
 
-import org.bson.types.Binary;
 import org.identityconnectors.common.logging.Log;
 import org.identityconnectors.framework.common.objects.AttributeBuilder;
 import org.identityconnectors.framework.common.objects.AttributeInfo;
@@ -218,13 +215,13 @@ public class SchemaHandler {
                 templateValue = templateUser.get(key);
 
                 switch (key) {
-                    case ICFS_NAME:
+                    case Constants.ICFS_NAME:
                         key = configuration.getKeyColumn();
                         break;
 //                    case ICFS_UID:
 //                        key = Constants.MONGODB_UID;
 //                        break;
-                    case ICFS_PASSWORD:
+                    case Constants.ICFS_PASSWORD:
                         key = configuration.getPasswordColumnName();
                         break;
                     default:
