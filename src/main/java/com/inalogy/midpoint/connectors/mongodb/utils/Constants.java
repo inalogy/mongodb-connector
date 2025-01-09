@@ -1,4 +1,4 @@
-package com.inalogy.midpoint.connector.mongodb.utils;
+package com.inalogy.midpoint.connectors.mongodb.utils;
 
 public class Constants {
     public static final short MONGODB_WRITE_EXCEPTION = 11000;

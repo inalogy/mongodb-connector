@@ -1,6 +1,6 @@
-package com.inalogy.midpoint.connector.mongodb.driver;
+package com.inalogy.midpoint.connectors.mongodb.driver;
 
-import com.inalogy.midpoint.connector.mongodb.MongoDbConfiguration;
+import com.inalogy.midpoint.connectors.mongodb.MongoDbConfiguration;
 
 import com.mongodb.MongoClientSettings;
 import com.mongodb.MongoCredential;

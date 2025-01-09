@@ -1,11 +1,11 @@
-package com.inalogy.midpoint.connector.mongodb;
+package com.inalogy.midpoint.connectors.mongodb;
 
-import com.inalogy.midpoint.connector.mongodb.filter.MongoDbFilterTranslator;
-import com.inalogy.midpoint.connector.mongodb.utils.Constants;
-import com.inalogy.midpoint.connector.mongodb.driver.Connection;
-import com.inalogy.midpoint.connector.mongodb.driver.MongoClientManager;
-import com.inalogy.midpoint.connector.mongodb.filter.MongoDbFilter;
-import com.inalogy.midpoint.connector.mongodb.schema.SchemaHandler;
+import com.inalogy.midpoint.connectors.mongodb.filter.MongoDbFilterTranslator;
+import com.inalogy.midpoint.connectors.mongodb.utils.Constants;
+import com.inalogy.midpoint.connectors.mongodb.driver.Connection;
+import com.inalogy.midpoint.connectors.mongodb.driver.MongoClientManager;
+import com.inalogy.midpoint.connectors.mongodb.filter.MongoDbFilter;
+import com.inalogy.midpoint.connectors.mongodb.schema.SchemaHandler;
 
 import com.mongodb.MongoException;
 import com.mongodb.MongoSecurityException;
@@ -33,6 +33,8 @@ import org.identityconnectors.framework.common.objects.OperationOptions;
 import org.identityconnectors.framework.common.objects.ResultsHandler;
 import org.identityconnectors.framework.common.objects.Schema;
 import org.identityconnectors.framework.common.objects.SchemaBuilder;
+import org.identityconnectors.framework.common.objects.SyncResultsHandler;
+import org.identityconnectors.framework.common.objects.SyncToken;
 import org.identityconnectors.framework.common.objects.Uid;
 import org.identityconnectors.framework.common.objects.filter.FilterTranslator;
 import org.identityconnectors.framework.spi.Configuration;
@@ -42,6 +44,7 @@ import org.identityconnectors.framework.spi.operations.CreateOp;
 import org.identityconnectors.framework.spi.operations.DeleteOp;
 import org.identityconnectors.framework.spi.operations.SchemaOp;
 import org.identityconnectors.framework.spi.operations.SearchOp;
+import org.identityconnectors.framework.spi.operations.SyncOp;
 import org.identityconnectors.framework.spi.operations.TestOp;
 import org.identityconnectors.framework.spi.operations.UpdateDeltaOp;
 
@@ -69,6 +72,7 @@ public class MongoDbConnector implements
         SearchOp<MongoDbFilter>,
         CreateOp,
         UpdateDeltaOp,
+        SyncOp,
         DeleteOp {
     private MongoDbConfiguration configuration;
     private Connection connection;
@@ -417,4 +421,14 @@ public class MongoDbConnector implements
         return null;
     }
 
+    @Override
+    public void sync(ObjectClass objectClass, SyncToken syncToken, SyncResultsHandler syncResultsHandler, OperationOptions operationOptions) {
+        // v resultHandler vratim zmenene objekty
+    }
+
+    @Override
+    public SyncToken getLatestSyncToken(ObjectClass objectClass) {
+        //select max obligation and return it when it run last time, if not found
+        return null;
+    }
 }

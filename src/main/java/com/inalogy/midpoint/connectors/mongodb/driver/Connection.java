@@ -1,8 +1,8 @@
-package com.inalogy.midpoint.connector.mongodb.driver;
+package com.inalogy.midpoint.connectors.mongodb.driver;
 
-import com.inalogy.midpoint.connector.mongodb.MongoDbConfiguration;
-import com.inalogy.midpoint.connector.mongodb.filter.MongoDbFilter;
-import com.inalogy.midpoint.connector.mongodb.utils.Constants;
+import com.inalogy.midpoint.connectors.mongodb.MongoDbConfiguration;
+import com.inalogy.midpoint.connectors.mongodb.filter.MongoDbFilter;
+import com.inalogy.midpoint.connectors.mongodb.utils.Constants;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;

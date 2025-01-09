@@ -1,4 +1,4 @@
-package com.inalogy.midpoint.connector.mongodb;
+package com.inalogy.midpoint.connectors.mongodb;
 
 import org.identityconnectors.common.security.GuardedString;
 import org.identityconnectors.framework.common.exceptions.ConfigurationException;

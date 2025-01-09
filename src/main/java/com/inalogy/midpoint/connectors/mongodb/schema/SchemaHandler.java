@@ -1,7 +1,7 @@
-package com.inalogy.midpoint.connector.mongodb.schema;
+package com.inalogy.midpoint.connectors.mongodb.schema;
 
-import com.inalogy.midpoint.connector.mongodb.utils.Constants;
-import com.inalogy.midpoint.connector.mongodb.MongoDbConfiguration;
+import com.inalogy.midpoint.connectors.mongodb.utils.Constants;
+import com.inalogy.midpoint.connectors.mongodb.MongoDbConfiguration;
 
 import org.bson.Document;
 

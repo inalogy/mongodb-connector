@@ -7,7 +7,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.inalogy.midpoint.connector</groupId>
     <artifactId>mongodb</artifactId>
-    <version>0.1.0.6</version>
+    <version>1.0.0</version>
     <parent>
         <artifactId>connector-parent</artifactId>
         <groupId>com.evolveum.polygon</groupId>
@@ -15,7 +15,7 @@
     </parent>
 
     <properties>
-        <connector.package>com.inalogy.midpoint.connector.mongodb</connector.package>
+        <connector.package>com.inalogy.midpoint.connectors.mongodb</connector.package>
         <connector.class>MongoDbConnector</connector.class>
         <assembly.path>src/main/assembly/connector.xml</assembly.path>
         <maven.jar.plugin.version>2.3.1</maven.jar.plugin.version>
