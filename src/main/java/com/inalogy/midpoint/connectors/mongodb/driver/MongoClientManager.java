@@ -68,7 +68,7 @@ public class MongoClientManager {
 
         // Multiple hosts for replica set
         if (configuration.getAdditionalHosts() != null && !configuration.getAdditionalHosts().isEmpty()) {
-            LOG.info("building MongoClient with additional hosts");
+            LOG.ok("building MongoClient with additional hosts");
             String[] additionalHosts = configuration.getAdditionalHosts().split(",");
             List<ServerAddress> hosts = new ArrayList<>();
             for (String host : additionalHosts) {
@@ -115,7 +115,7 @@ public class MongoClientManager {
 
         // Single host & port
         if (configuration.getHost() != null && (configuration.getAdditionalHosts() == null || configuration.getAdditionalHosts().isEmpty())) {
-            LOG.info("building MongoClient with single host");
+            LOG.ok("building MongoClient with single host");
             settingsBuilder.applyToClusterSettings(builder ->
                     builder.hosts(Collections.singletonList(new ServerAddress(configuration.getHost(), configuration.getPort()))));
         }
