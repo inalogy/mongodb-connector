@@ -170,11 +170,10 @@ public class MongoDbConnector implements
         try {
             transformedDocument = SchemaHandler.alignDataTypes(docToInsert, this.connection.getTemplateUser(), this.configuration);
             this.connection.insertOne(transformedDocument);
-            LOG.ok("Account successfully created");
+            LOG.ok("entry successfully inserted");
         } catch (MongoWriteException e) {
             if (e.getError().getCode() == Constants.MONGODB_WRITE_EXCEPTION) {
                 LOG.info("alreadyExists {0}", e.getMessage());
-                // Handle the duplicate key error
                 throw new AlreadyExistsException();
             } else {
                 LOG.error("FATAL_ERROR Occurred while creating account: " + e.getMessage());
@@ -182,7 +181,7 @@ public class MongoDbConnector implements
             }
         }
 
-        // Get the generated _id field from MongoDB and return it as Uid
+        // Get the generated _id field from MongoDB
         Object id = transformedDocument.get(Constants.MONGODB_UID);
         if (id != null) {
             return new Uid(id.toString());
@@ -217,7 +216,7 @@ public class MongoDbConnector implements
     @Override
     public Schema schema() {
         if (schema == null) {
-            LOG.info("Cache schema");
+            LOG.ok("Cache schema");
             SchemaBuilder schemaBuilder = new SchemaBuilder(MongoDbConnector.class);
             SchemaHandler.buildObjectClass(schemaBuilder, this.configuration.getKeyColumn(), this.configuration.getPasswordColumnName(), this.connection.getTemplateUser());
 
@@ -269,7 +268,7 @@ public class MongoDbConnector implements
         FindIterable<Document> documents;
 
         if (query != null) {
-            // Query by specific UID
+            // Query by specific UID/Name
             Document result = this.connection.getSingleUser(query);
             if (result != null) {
                 ConnectorObject connectorObject = SchemaHandler.convertDocumentToConnectorObject(result, schema, objectClass, this.configuration);
@@ -304,7 +303,7 @@ public class MongoDbConnector implements
             if (templateUser != null) {
                 LOG.info("Test successful. Found user specified in userTemplate: " + this.configuration.getTemplateUser());
             } else {
-                LOG.info("Test successful, but no user found with the specified email.");
+                LOG.info("Test successful, but no user found.");
             }
         } catch (Exception e) {
             LOG.error("Test failed: " + e.getMessage());
@@ -386,22 +385,18 @@ public class MongoDbConnector implements
             List<Object> valuesToRemove = SchemaHandler.alignDeltaValues(delta.getValuesToRemove(), templateValue);
             List<Object> valuesToReplace = SchemaHandler.alignDeltaValues(delta.getValuesToReplace(), templateValue);
 
-            // Handling add operations
             if (valuesToAdd != null && !valuesToAdd.isEmpty()) {
                 updateOps.add(Updates.addToSet(attrName, new BasicDBObject("$each", valuesToAdd)));
             }
 
-            // Handling remove operations
             if (valuesToRemove != null && !valuesToRemove.isEmpty()) {
                 updateOps.add(Updates.pullAll(attrName, valuesToRemove));
             }
-            // Handling replace operations
+
             if (valuesToReplace != null ) {
                 if (valuesToReplace.isEmpty()) {
-                    // set -> new value Null
                     updateOps.add(Updates.set(attrName, null));
                 } else if (valuesToReplace.get(0) == null) {
-                    // set -> new value Null
                     updateOps.add(Updates.set(attrName, null));
                 } else {
                     updateOps.add(Updates.set(attrName, valuesToReplace.size() == 1 ? valuesToReplace.get(0) : valuesToReplace));
@@ -409,11 +404,10 @@ public class MongoDbConnector implements
             }
         }
 
-        // Perform the update operation
         UpdateResult result = this.connection.updateUser(uid, updateOps);
         // result.getModifiedCount() == 0    when setting attribute to null modificationCount doesn't change, need better error handling
         if (result.getMatchedCount() == 0) {
-            LOG.error("unknownUid {} in updateDelta", uid);
+            LOG.error("unknownUid {0} in updateDelta", uid);
             throw new UnknownUidException();
         }
 
