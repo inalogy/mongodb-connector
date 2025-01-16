@@ -23,15 +23,20 @@
 
     <connectorConfiguration>
         <icfc:configurationProperties xmlns:gen902="http://midpoint.evolveum.com/xml/ns/public/connector/icf-1/bundle/com.inalogy.midpoint.connector.mongodb/com.inalogy.midpoint.connector.mongodb.MongoDbConnector">
-            <gen902:host>localhost</gen902:host>
-            <gen902:port>27017</gen902:port>
-            <gen902:templateUser>schemaUserTemplate</gen902:templateUser>
-            <gen902:username>username</gen902:username>
-            <gen902:database>testDatabase</gen902:database>
-            <gen902:collection>idmUsers</gen902:collection>
+            <gen902:host>192.168.1.5</gen902:host>
+            <gen902:port>2121</gen902:port>
+            <gen902:templateUser>schema</gen902:templateUser>
+            <gen902:username>dbuser</gen902:username>
+            <gen902:database>idm</gen902:database>
+            <gen902:collection>users</gen902:collection>
             <gen902:keyColumn>idmId</gen902:keyColumn>
+            <gen902:useTLS>true</gen902:useTLS>
+            <gen902:additionalHosts>192.168.1.6:2121,192.168.1.7:2121</gen902:additionalHosts>
+            <gen902:replicaSet>rs0</gen902:replicaSet>
+            <gen902:idmUpdatedAt>idmUpdatedAt</gen902:idmUpdatedAt>
+            <gen902:readPreference>secondaryPreferred</gen902:readPreference>
             <gen902:password>
-                <t:clearValue>p@sswdxD=-</t:clearValue>
+                <t:clearValue>secret</t:clearValue>
             </gen902:password>
         </icfc:configurationProperties>
     </connectorConfiguration>
@@ -213,6 +218,9 @@
             <cap:create>
                 <cap:enabled>true</cap:enabled>
             </cap:create>
+            <cap:pagedSearch>
+                <cap:defaultSortField>icfs:uid</cap:defaultSortField>
+            </cap:pagedSearch>
             <cap:countObjects>
                 <cap:simulate>pagedSearchEstimate</cap:simulate>
             </cap:countObjects>
