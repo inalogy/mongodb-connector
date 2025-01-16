@@ -13,7 +13,7 @@
 ### Mongodb-connector
 Mongodb(standalone mongodb) connector for midPoint 
 
-version 0.1.0.1
+version 1.0.0
 # Capabilities and Features
 
 - Schema: YES - dynamic
