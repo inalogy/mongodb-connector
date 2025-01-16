@@ -35,7 +35,6 @@ public class Connection {
     private static final Log LOG = Log.getLog(Connection.class);
 
     private final MongoClient mongoClient;
-//    private final MongoDatabase database;
     private final MongoCollection<Document> collection;
     private final MongoDbConfiguration configuration;
     private  Document templateUser;
@@ -96,7 +95,7 @@ public class Connection {
             return this.collection.find();
         }
 
-        // If pageOffset is 1 and pageSize is 1, return null (bug in midpoint?)
+        // If pageOffset is 1 and pageSize is 1, return null (bug ?)
         if (pageOffset == 1 && pageSize == 1) {
             return null;
         }
