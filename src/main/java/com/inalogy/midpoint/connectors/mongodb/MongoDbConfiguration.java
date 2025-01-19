@@ -195,7 +195,7 @@ public class MongoDbConfiguration extends AbstractConfiguration {
         return authMechanism;
     }
 
-    @ConfigurationProperty(order = 26, displayMessageKey = "idmUpdatedAt.display", helpMessageKey = "idmUpdatedAt.help")
+    @ConfigurationProperty(order = 27, displayMessageKey = "idmUpdatedAt.display", helpMessageKey = "idmUpdatedAt.help")
     public String getIdmUpdatedAt() {
         return idmUpdatedAt;
     }

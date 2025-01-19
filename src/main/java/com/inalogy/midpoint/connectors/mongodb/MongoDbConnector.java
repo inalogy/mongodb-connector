@@ -49,6 +49,7 @@ import org.identityconnectors.framework.spi.operations.TestOp;
 import org.identityconnectors.framework.spi.operations.UpdateDeltaOp;
 
 import java.text.SimpleDateFormat;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Iterator;
@@ -154,6 +155,14 @@ public class MongoDbConnector implements
             String attrName = attr.getName();
             List<Object> attrValues = attr.getValue();
 
+            // Handle special ICF attributes
+            attrName = switch (attrName) {
+                case Constants.ICFS_NAME -> this.configuration.getKeyColumn();
+                case Constants.ICFS_PASSWORD -> this.configuration.getPasswordColumnName();
+                default -> attrName;
+            };
+
+
             // Check if it's a multi-valued attribute by its size or refer to the schema
             if (attrValues != null && attrValues.size() > 1) {
                 // Multi-valued attribute, insert as an array
@@ -162,14 +171,15 @@ public class MongoDbConnector implements
                 // Single-valued attribute
                 if (attrValues != null && !attrValues.isEmpty()) {
                     Object attrValue = attrValues.get(0);
+                    if (attrValue instanceof ZonedDateTime) {
+                        attrValue = Date.from(((ZonedDateTime) attrValue).toInstant());
+                    }
                     docToInsert.append(attrName, attrValue);
                 }
             }
         }
-        Document transformedDocument;
         try {
-            transformedDocument = SchemaHandler.alignDataTypes(docToInsert, this.connection.getTemplateUser(), this.configuration);
-            this.connection.insertOne(transformedDocument);
+            this.connection.insertOne(docToInsert);
             LOG.ok("entry successfully inserted");
         } catch (MongoWriteException e) {
             if (e.getError().getCode() == Constants.MONGODB_WRITE_EXCEPTION) {
@@ -182,7 +192,7 @@ public class MongoDbConnector implements
         }
 
         // Get the generated _id field from MongoDB
-        Object id = transformedDocument.get(Constants.MONGODB_UID);
+        Object id = docToInsert.get(Constants.MONGODB_UID);
         if (id != null) {
             return new Uid(id.toString());
         } else {
@@ -333,27 +343,19 @@ public class MongoDbConnector implements
      */
     @Override
     public Set<AttributeDelta> updateDelta(ObjectClass objectClass, Uid uid, Set<AttributeDelta> deltas, OperationOptions operationOptions) {
-        if (objectClass == null || !objectClass.getObjectClassValue().equals(Constants.OBJECT_CLASS_ACCOUNT)) {
+        if (objectClass == null || !Constants.OBJECT_CLASS_ACCOUNT.equals(objectClass.getObjectClassValue())) {
             throw new ConnectorException("Invalid object class");
         }
 
         if (uid == null || uid.getUidValue() == null) {
             throw new ConnectorException("Uid must not be null");
         }
-        //docasny fix na midpoint 4.7.x self-service password reset bug
-        boolean invalidPasswordAttribute = deltas.stream()
-                .filter(delta -> Constants.ICFS_PASSWORD.equals(delta.getName()))
-                .count() == 1;
-        if (invalidPasswordAttribute){
-            LOG.info("removing invalid password attribute");
-            return null;
-        }
 
         // Initialize the update operations
         List<Bson> updateOps = new ArrayList<>();
 
         if (this.configuration.getIdmUpdatedAt() != null){
-            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
+            SimpleDateFormat sdf = new SimpleDateFormat(Constants.ISO_DATE_FORMAT);
             sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
             String currentDateTime = sdf.format(new Date());
 
@@ -369,45 +371,43 @@ public class MongoDbConnector implements
                     }
                 }
 
-                // Add currentDateTime to your update operations.
                 updateOps.add(Updates.set(updateTimeAttribute, currentDateTime));
             }
         }
         LOG.ok("Executing updateDelta for UID: {0}", uid);
         Document templateUser = this.connection.getTemplateUser();
 
-
         for (AttributeDelta delta : deltas) {
             String attrName = delta.getName();
+            attrName = switch (attrName) {
+                case Constants.ICFS_NAME -> this.configuration.getKeyColumn();
+                case Constants.ICFS_PASSWORD -> this.configuration.getPasswordColumnName();
+                default -> attrName;
+            };
+
             Object templateValue = templateUser.get(attrName);
 
+            // Align values with schema
             List<Object> valuesToAdd = SchemaHandler.alignDeltaValues(delta.getValuesToAdd(), templateValue);
             List<Object> valuesToRemove = SchemaHandler.alignDeltaValues(delta.getValuesToRemove(), templateValue);
             List<Object> valuesToReplace = SchemaHandler.alignDeltaValues(delta.getValuesToReplace(), templateValue);
 
+            // Add operations
             if (valuesToAdd != null && !valuesToAdd.isEmpty()) {
                 updateOps.add(Updates.addToSet(attrName, new BasicDBObject("$each", valuesToAdd)));
             }
-
             if (valuesToRemove != null && !valuesToRemove.isEmpty()) {
                 updateOps.add(Updates.pullAll(attrName, valuesToRemove));
             }
-
-            if (valuesToReplace != null ) {
-                if (valuesToReplace.isEmpty()) {
-                    updateOps.add(Updates.set(attrName, null));
-                } else if (valuesToReplace.get(0) == null) {
-                    updateOps.add(Updates.set(attrName, null));
-                } else {
-                    updateOps.add(Updates.set(attrName, valuesToReplace.size() == 1 ? valuesToReplace.get(0) : valuesToReplace));
-                }
+            if (valuesToReplace != null) {
+                updateOps.add(Updates.set(attrName, valuesToReplace.isEmpty() ? null : (valuesToReplace.size() == 1 ? valuesToReplace.get(0) : valuesToReplace)));
             }
         }
 
+        // Execute update operation
         UpdateResult result = this.connection.updateUser(uid, updateOps);
-        // result.getModifiedCount() == 0    when setting attribute to null modificationCount doesn't change, need better error handling
         if (result.getMatchedCount() == 0) {
-            LOG.error("unknownUid {0} in updateDelta", uid);
+            LOG.error("Unknown UID {0} in updateDelta", uid);
             throw new UnknownUidException();
         }
 

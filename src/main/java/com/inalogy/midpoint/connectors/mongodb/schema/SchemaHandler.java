@@ -21,7 +21,8 @@ import org.identityconnectors.framework.common.objects.Schema;
 import org.identityconnectors.framework.common.objects.SchemaBuilder;
 import org.identityconnectors.framework.common.objects.Uid;
 
-import java.text.SimpleDateFormat;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collection;
@@ -94,7 +95,7 @@ public class SchemaHandler {
             if (value instanceof org.bson.types.ObjectId) {
                 dataType = String.class;
             } else if (value instanceof Date) {
-                dataType = String.class;
+                dataType = ZonedDateTime.class;
             } else if (value instanceof org.bson.types.Binary) {
                 LOG.ok("[NOT IMPLEMENTED] Skipping attribute with Binary attribute: {0}", name);
                 continue;
@@ -191,10 +192,7 @@ public class SchemaHandler {
 
             //
             if (value instanceof Date) {
-                //mongo java driver automatically transform IsoDate we need to convert it back....
-                SimpleDateFormat sdf = new SimpleDateFormat(Constants.ISO_DATE_FORMAT);
-                sdf.setTimeZone(TimeZone.getTimeZone(Constants.TIME_ZONE));
-                value = sdf.format((Date) value);
+                value = ((Date) value).toInstant().atZone(ZoneId.of(Constants.TIME_ZONE));
             }
 
             if (entry.getKey().equals(Constants.MONGODB_UID)) {
@@ -221,69 +219,6 @@ public class SchemaHandler {
         }
 
         return builder.build();
-    }
-
-    /**
-     * Aligns the data types of a MongoDB Document to match those of a template Document.
-     *
-     * @param docToInsert   The MongoDB Document whose types need to be aligned.
-     * @param templateUser  The template Document against which to align types.
-     * @param configuration The MongoDB Configuration.
-     * @return A new MongoDB Document with aligned types.
-     */
-    public static Document alignDataTypes(Document docToInsert, Document templateUser, MongoDbConfiguration configuration) {
-        Document alignedDocument = new Document();
-
-        for (Map.Entry<String, Object> entry : docToInsert.entrySet()) {
-            String key = entry.getKey();
-            Object value = entry.getValue();
-            Object templateValue = templateUser.get(key);
-
-            // if attr not present in templateUser it must be __SPECIAL_ATTR
-            if (templateValue == null) {
-                templateValue = templateUser.get(key);
-
-                switch (key) {
-                    case Constants.ICFS_NAME:
-                        key = configuration.getKeyColumn();
-                        break;
-//                    case ICFS_UID:
-//                        key = Constants.MONGODB_UID;
-//                        break;
-                    case Constants.ICFS_PASSWORD:
-                        key = configuration.getPasswordColumnName();
-                        break;
-                    default:
-                        //    TODO err handling
-                        break;
-                }
-            } else {
-                Class<?> templateType = templateValue.getClass();
-//              handle multivalued attribute (one-dimensional array) all attributes inside must be same data type
-                if (templateValue instanceof List) {
-                    List<?> templateList = (List<?>) templateValue;
-                    if (!templateList.isEmpty()) {
-                        templateType = templateList.get(0).getClass();
-                    }
-                    List<Object> newValueList = new ArrayList<>();
-
-                    if (value instanceof List) {
-                        for (Object item : (List<?>) value) {
-                            newValueList.add(convertValue(item, templateType));
-                        }
-                    } else {
-                        newValueList.add(convertValue(value, templateType));
-                    }
-
-                    alignedDocument.append(key, newValueList);
-                } else {
-                    //handle any other data type
-                    alignedDocument.append(key, convertValue(value, templateType));
-                }
-            }
-        }
-
-        return alignedDocument;
     }
 
     public static List<Object> alignDeltaValues(List<Object> deltaValues, Object templateValue) {
@@ -317,9 +252,6 @@ public class SchemaHandler {
         if (targetType.equals(String.class)) {
             return value.toString();
 
-        } else if (targetType.equals(Integer.class)) {
-            return Integer.parseInt(value.toString());
-
         } else if (targetType.equals(Long.class)) {
             return Long.parseLong(value.toString());
 
@@ -327,28 +259,12 @@ public class SchemaHandler {
             return Double.parseDouble(value.toString());
 
         } else if (targetType.equals(Date.class)) {
-            return handleTimeZoneConversion(value);
-
+            return  Date.from(((ZonedDateTime) value).toInstant());
         } else if (targetType.equals(byte[].class)) {
-            // Assuming the photo is Base64 encoded || WORK in progress
+            // WORK in progress
             return Base64.getDecoder().decode(value.toString());
-
-        } else if (targetType.equals(Boolean.class)) {
-            return Boolean.parseBoolean(value.toString());
-
         } else {
             return value;
-        }
-    }
-
-    private static Date handleTimeZoneConversion(Object value) {
-        SimpleDateFormat sdf = new SimpleDateFormat(Constants.ISO_DATE_FORMAT);
-        sdf.setTimeZone(TimeZone.getTimeZone(Constants.TIME_ZONE));
-        try {
-            return sdf.parse(value.toString());
-        } catch (Exception e) { // Catching runtime exceptions
-            LOG.error("fatal error occured while converting ISO-DATE value: {0}", value);
-            return null;
         }
     }
 }
