@@ -394,7 +394,12 @@ public class MongoDbConnector implements
 
             // Add operations
             if (valuesToAdd != null && !valuesToAdd.isEmpty()) {
-                updateOps.add(Updates.addToSet(attrName, new BasicDBObject("$each", valuesToAdd)));
+                if (this.configuration.isUseSetForUpdates()) {
+                    updateOps.add(Updates.addToSet(attrName, new BasicDBObject("$each", valuesToAdd)));
+                } else {
+                    LOG.ok("Using pushEach for multivaluedAttribute modification");
+                    updateOps.add(Updates.pushEach(attrName, valuesToAdd));
+                }
             }
             if (valuesToRemove != null && !valuesToRemove.isEmpty()) {
                 updateOps.add(Updates.pullAll(attrName, valuesToRemove));
@@ -417,12 +422,10 @@ public class MongoDbConnector implements
 
     @Override
     public void sync(ObjectClass objectClass, SyncToken syncToken, SyncResultsHandler syncResultsHandler, OperationOptions operationOptions) {
-        // v resultHandler vratim zmenene objekty
     }
 
     @Override
     public SyncToken getLatestSyncToken(ObjectClass objectClass) {
-        //select max obligation and return it when it run last time, if not found
         return null;
     }
 }

@@ -21,17 +21,17 @@
         </filter>
     </connectorRef>
 
-    <connectorConfiguration>
-        <icfc:configurationProperties xmlns:gen902="http://midpoint.evolveum.com/xml/ns/public/connector/icf-1/bundle/com.inalogy.midpoint.connector.mongodb/com.inalogy.midpoint.connector.mongodb.MongoDbConnector">
-            <gen902:host>192.168.1.5</gen902:host>
-            <gen902:port>2121</gen902:port>
+    <connectorConfiguration xmlns:icfc="http://midpoint.evolveum.com/xml/ns/public/connector/icf-1/connector-schema-3">
+        <icfc:configurationProperties xmlns:gen902="http://midpoint.evolveum.com/xml/ns/public/connector/icf-1/bundle/com.inalogy.midpoint.connectors.mongodb/com.inalogy.midpoint.connectors.mongodb.MongoDbConnector">
+        <gen902:host>192.168.1.5</gen902:host>
+            <gen902:port>27017</gen902:port>
             <gen902:templateUser>schema</gen902:templateUser>
             <gen902:username>dbuser</gen902:username>
             <gen902:database>idm</gen902:database>
             <gen902:collection>users</gen902:collection>
-            <gen902:keyColumn>idmId</gen902:keyColumn>
+            <gen902:keyColumn>username</gen902:keyColumn>
             <gen902:useTLS>true</gen902:useTLS>
-            <gen902:additionalHosts>192.168.1.6:2121,192.168.1.7:2121</gen902:additionalHosts>
+            <gen902:additionalHosts>192.168.1.6:27017,192.168.1.7:27017</gen902:additionalHosts>
             <gen902:replicaSet>rs0</gen902:replicaSet>
             <gen902:idmUpdatedAt>idmUpdatedAt</gen902:idmUpdatedAt>
             <gen902:readPreference>secondaryPreferred</gen902:readPreference>
@@ -63,26 +63,25 @@
                 </outbound>
             </attribute>
             <attribute>
-                <ref>ri:login</ref>
+                <ref>ri:age</ref>
                 <outbound>
                     <strength>strong</strength>
                     <source>
-                        <path>name</path>
-                    </source>
-                </outbound>
-            </attribute>
-
-            <attribute>
-                <ref>ri:email</ref>
-                <outbound>
-                    <strength>strong</strength>
-                    <source>
-                        <path>emailAddress</path>
+                        <path>extension/age</path>
                     </source>
                 </outbound>
             </attribute>
             <attribute>
-                <ref>ri:firstName</ref>
+                <ref>ri:lastLogin</ref>
+                <outbound>
+                    <source>
+                        <path>extension/lastLogin</path>
+                    </source>
+                    <strength>strong</strength>
+                </outbound>
+            </attribute>
+            <attribute>
+                <ref>ri:givenName</ref>
                 <outbound>
                     <strength>strong</strength>
                     <source>
@@ -91,49 +90,12 @@
                 </outbound>
             </attribute>
             <attribute>
-                <ref>ri:lastName</ref>
+                <ref>ri:familyName</ref>
                 <outbound>
                     <strength>strong</strength>
                     <source>
                         <path>familyName</path>
                     </source>
-                </outbound>
-            </attribute>
-            <attribute>
-                <ref>ri:titlePrefix</ref>
-                <outbound>
-                    <strength>strong</strength>
-                    <source>
-                        <path>honorificPrefix</path>
-                    </source>
-                </outbound>
-            </attribute>
-            <attribute>
-                <ref>ri:titleSuffix</ref>
-                <outbound>
-                    <strength>strong</strength>
-                    <source>
-                        <path>honorificSuffix</path>
-                    </source>
-                </outbound>
-            </attribute>
-            <attribute>
-                <ref>ri:idmCreatedAt</ref>
-                <outbound>
-                    <strength>weak</strength>
-                    <expression>
-                        <script>
-                            <code>
-                                import java.text.SimpleDateFormat
-
-                                SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
-
-                                Date currentDate = new Date()
-
-                                return formatter.format(currentDate)
-                            </code>
-                        </script>
-                    </expression>
                 </outbound>
             </attribute>
             <activation>
@@ -214,6 +176,7 @@
             </cap:delete>
             <cap:update>
                 <cap:enabled>true</cap:enabled>
+                <cap:addRemoveAttributeValues>true</cap:addRemoveAttributeValues>
             </cap:update>
             <cap:create>
                 <cap:enabled>true</cap:enabled>
@@ -226,4 +189,8 @@
             </cap:countObjects>
         </configured>
     </capabilities>
+
+    <projection>
+        <assignmentPolicyEnforcement>full</assignmentPolicyEnforcement>
+    </projection>
 </resource>

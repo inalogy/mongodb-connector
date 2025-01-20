@@ -43,6 +43,7 @@ public class MongoDbConfiguration extends AbstractConfiguration {
      */
     private GuardedString password = null;
     private String additionalHosts;
+    private boolean useSetForUpdates = true;
     private boolean useTls = false;
     // Replica Set Options
     private String replicaSet;
@@ -199,6 +200,10 @@ public class MongoDbConfiguration extends AbstractConfiguration {
     public String getIdmUpdatedAt() {
         return idmUpdatedAt;
     }
+    @ConfigurationProperty(order = 28, displayMessageKey = "UseSetForUpdates.display", helpMessageKey = "UseSetForUpdates.help")
+    public boolean isUseSetForUpdates() {
+        return useSetForUpdates;
+    }
 
     public void setIdmUpdatedAt(String idmUpdatedAt){this.idmUpdatedAt = idmUpdatedAt;}
     public void setReplicaSet(String replicaSet) {
@@ -259,7 +264,9 @@ public class MongoDbConfiguration extends AbstractConfiguration {
     public void setAuthMechanism(String authMechanism) {
         this.authMechanism = authMechanism;
     }
-
+    public void setUseSetForUpdates(boolean useSetForUpdates) {
+        this.useSetForUpdates = useSetForUpdates;
+    }
 
     @Override
     public void validate() {
