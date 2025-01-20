@@ -44,10 +44,6 @@ The connector uses a **dynamic schema** based on the `templateUser` document. Th
 | **Data Types**        | All values in the array must have the same data type | String, Boolean, Integer          |
 | **Maps (Key-Value Pairs)**      | Not supported                                     | `{ "key1": "value1", "key2": "value2" }`  |
 
-### Notes:
-- Attributes formatted as one-dimensional arrays (e.g., `["val1", "val2"]`) are supported.
-- Nested arrays (e.g., `[["val1a", "val1b"], ["val2a", "val2b"]]`) and **maps** (e.g., `{ "key1": "value1", "key2": "value2" }`) are **not supported**.
-- All elements in the array must be of the same data type (e.g., all strings, all integers, booleans.).
 
 ### database setup
 1. create Database -> create Collection -> create systemUser
