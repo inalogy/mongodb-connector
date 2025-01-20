@@ -230,7 +230,6 @@ public class MongoDbConnector implements
             SchemaBuilder schemaBuilder = new SchemaBuilder(MongoDbConnector.class);
             SchemaHandler.buildObjectClass(schemaBuilder, this.configuration.getKeyColumn(), this.configuration.getPasswordColumnName(), this.connection.getTemplateUser());
 
-            // Build the schema
             schema = schemaBuilder.build();
         }
         return schema;
@@ -351,7 +350,6 @@ public class MongoDbConnector implements
             throw new ConnectorException("Uid must not be null");
         }
 
-        // Initialize the update operations
         List<Bson> updateOps = new ArrayList<>();
 
         if (this.configuration.getIdmUpdatedAt() != null){
@@ -392,7 +390,6 @@ public class MongoDbConnector implements
             List<Object> valuesToRemove = SchemaHandler.alignDeltaValues(delta.getValuesToRemove(), templateValue);
             List<Object> valuesToReplace = SchemaHandler.alignDeltaValues(delta.getValuesToReplace(), templateValue);
 
-            // Add operations
             if (valuesToAdd != null && !valuesToAdd.isEmpty()) {
                 if (this.configuration.isUseSetForUpdates()) {
                     updateOps.add(Updates.addToSet(attrName, new BasicDBObject("$each", valuesToAdd)));
@@ -409,7 +406,6 @@ public class MongoDbConnector implements
             }
         }
 
-        // Execute update operation
         UpdateResult result = this.connection.updateUser(uid, updateOps);
         if (result.getMatchedCount() == 0) {
             LOG.error("Unknown UID {0} in updateDelta", uid);
