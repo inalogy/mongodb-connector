@@ -81,13 +81,9 @@ public class MongoDbConnector implements
     private static final Log LOG = Log.getLog(MongoDbConnector.class);
     public void checkAlive() {
         try {
-            Document templateUser = this.connection.getTemplateUser();
-            if (templateUser != null) {
-            } else {
-                LOG.error("checkAlive successful, but no user found with the specified KeyColumnName Attribute. Please check connectorConfiguration and make sure that templateUser is present in database.");
-            }
+            this.connection.getTemplateUser();
         } catch (Exception e) {
-            LOG.error("Connection to mongodb is not alive. " + e);
+            LOG.ok("Connection to mongodb is not alive. " + e);
             throw new ConnectionFailedException();
         }
     }
@@ -105,17 +101,20 @@ public class MongoDbConnector implements
             MongoClientManager mongoClientManager = new MongoClientManager(this.configuration);
             this.connection = new Connection(mongoClientManager.buildMongoClient(), this.configuration);
         } catch (MongoSocketOpenException | MongoTimeoutException e) {
-            LOG.error("FATAL_ERROR Network issue while connecting to MongoDB", e);
+            LOG.error("FATAL_ERROR: Network issue while connecting to MongoDB", e);
+            throw new ConnectorException("Network error while connecting to MongoDB: " + e.getMessage(), e);
         } catch (MongoSecurityException e) {
-            LOG.error("FATAL_ERROR Security issue in MongoDB connection", e);
+            LOG.error("FATAL_ERROR: Security issue in MongoDB connection", e);
+            throw new ConnectorException("Security error in MongoDB connection: " + e.getMessage(), e);
         } catch (MongoException e) {
-            LOG.error("FATAL_ERROR Uncategorized error while initialising mongodb connector", e);
+            LOG.error("FATAL_ERROR: Uncategorized error while initializing MongoDB connector", e);
+            throw new ConnectorException("Uncategorized error while initializing MongoDB connector: " + e.getMessage(), e);
         }
     }
 
     @Override
     public void dispose() {
-        LOG.info("Disposing of MongoDB connector");
+        LOG.ok("Disposing of MongoDB connector");
         if (this.connection != null) {
             try {
                 this.connection.close();

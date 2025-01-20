@@ -32,7 +32,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.Date;
-import java.util.TimeZone;
 
 /**
  * Utility class for handling the schema-related functionalities in the MongoDB connector.
@@ -223,7 +222,7 @@ public class SchemaHandler {
 
     public static List<Object> alignDeltaValues(List<Object> deltaValues, Object templateValue) {
         if (deltaValues == null || templateValue == null) {
-            return deltaValues;  // If either is null, no alignment is done.
+            return deltaValues;
         }
 
         List<Object> alignedValues = new ArrayList<>();
