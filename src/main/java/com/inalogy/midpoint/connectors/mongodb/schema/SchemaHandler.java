@@ -1,11 +1,13 @@
 package com.inalogy.midpoint.connectors.mongodb.schema;
 
+import com.inalogy.midpoint.connectors.mongodb.driver.MongoClientManager;
 import com.inalogy.midpoint.connectors.mongodb.utils.Constants;
 import com.inalogy.midpoint.connectors.mongodb.MongoDbConfiguration;
 
 import org.bson.Document;
 
 import org.identityconnectors.common.logging.Log;
+import org.identityconnectors.common.security.GuardedString;
 import org.identityconnectors.framework.common.objects.AttributeBuilder;
 import org.identityconnectors.framework.common.objects.AttributeInfo;
 import org.identityconnectors.framework.common.objects.AttributeInfoBuilder;
@@ -248,6 +250,10 @@ public class SchemaHandler {
     }
 
     private static Object convertValue(Object value, Class<?> targetType) {
+        if (value instanceof GuardedString){
+            char[] password = MongoClientManager.passwordAccessor((GuardedString) value);
+            value = new String(password);
+        }
         if (targetType.equals(String.class)) {
             return value.toString();
 

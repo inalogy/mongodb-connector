@@ -21,6 +21,7 @@ import org.bson.Document;
 import org.bson.conversions.Bson;
 
 import org.identityconnectors.common.logging.Log;
+import org.identityconnectors.common.security.GuardedString;
 import org.identityconnectors.framework.common.exceptions.AlreadyExistsException;
 import org.identityconnectors.framework.common.exceptions.ConnectionFailedException;
 import org.identityconnectors.framework.common.exceptions.ConnectorException;
@@ -172,6 +173,9 @@ public class MongoDbConnector implements
                     Object attrValue = attrValues.get(0);
                     if (attrValue instanceof ZonedDateTime) {
                         attrValue = Date.from(((ZonedDateTime) attrValue).toInstant());
+                    } else if (attrName.equals(Constants.ICFS_PASSWORD)) {
+                        char[] password = MongoClientManager.passwordAccessor((GuardedString) attrValue);
+                        attrValue = new String(password);
                     }
                     docToInsert.append(attrName, attrValue);
                 }
@@ -349,6 +353,8 @@ public class MongoDbConnector implements
             throw new ConnectorException("Uid must not be null");
         }
 
+        LOG.ok("Executing updateDelta for UID: {0}", uid);
+
         List<Bson> updateOps = new ArrayList<>();
 
         if (this.configuration.getIdmUpdatedAt() != null){
@@ -383,6 +389,7 @@ public class MongoDbConnector implements
             };
 
             Object templateValue = templateUser.get(attrName);
+
 
             // Align values with schema
             List<Object> valuesToAdd = SchemaHandler.alignDeltaValues(delta.getValuesToAdd(), templateValue);

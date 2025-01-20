@@ -130,7 +130,7 @@ public class MongoClientManager {
      * @param guardedPassword The GuardedString containing the password.
      * @return The password as a char array.
      */
-    private  char[] passwordAccessor(GuardedString guardedPassword) {
+    public static char[] passwordAccessor(GuardedString guardedPassword) {
         final char[][] passwordArray = new char[1][];
         if (guardedPassword != null) {
             guardedPassword.access(chars -> passwordArray[0] = Arrays.copyOf(chars, chars.length));
