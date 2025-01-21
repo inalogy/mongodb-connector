@@ -1,0 +1,15 @@
+<role xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+      xmlns:c="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+      oid="8906f430-dfe5-4590-b035-ea7c36f0f845">
+
+    <name>MONGODB:Account</name>
+    <inducement>
+        <description>Create account on KIS resource</description>
+        <construction>
+            <resourceRef oid="D7216C36-5D60-46F1-8793-A779AFB323E7" type="c:ResourceType"/>
+            <kind>account</kind>
+            <intent>default</intent>
+        </construction>
+        <focusType>UserType</focusType>
+    </inducement>
+</role>
