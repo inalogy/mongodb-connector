@@ -176,7 +176,7 @@ public class MongoDbConnector implements
                     Object attrValue = attrValues.get(0);
                     if (attrValue instanceof ZonedDateTime) {
                         attrValue = Date.from(((ZonedDateTime) attrValue).toInstant());
-                    } else if (attrName.equals(Constants.ICFS_PASSWORD)) {
+                    } else if (attrName.equals(this.configuration.getPasswordColumnName())) {
                         char[] password = MongoClientManager.passwordAccessor((GuardedString) attrValue);
                         attrValue = new String(password);
                     }
